@@ -1,0 +1,19 @@
+{
+  "name": "clashdata-monorepo",
+  "type": "module",
+  "workspaces": [
+    "apps/*"
+  ],
+ "scripts": {
+    "dev:api": "bun --filter @clashdata/api dev",
+    "dev:web": "bun --filter @clashdata/web dev",
+    "dev": "bun --filter \"*\" dev",
+    "build:api": "bun --filter @clashdata/api run build",
+    "build:web": "bun --filter @clashdata/web run build",
+    "db:generate": "bun --filter @clashdata/api prisma generate",
+    "db:push": "bun --filter @clashdata/api prisma db push"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

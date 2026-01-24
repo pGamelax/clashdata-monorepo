@@ -1,5 +1,5 @@
 {
-  "name": "clashdata-client-vite",
+  "name": "@clashdata/web",
   "private": true,
   "type": "module",
   "scripts": {
