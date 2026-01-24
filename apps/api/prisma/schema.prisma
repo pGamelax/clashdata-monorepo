@@ -1,0 +1,144 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  user
+  admin
+  moderator
+}
+
+model User {
+  id            String    @id @default(uuid())
+  name          String
+  email         String    @unique
+  emailVerified Boolean   @default(false) @map("email_verified")
+  role          UserRole  @default(user)
+  banned        Boolean   @default(false)
+  banReason     String?   @map("ban_reason")
+  banExpires    DateTime? @map("ban_expires")
+  image         String?
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  sessions      Session[]
+  accounts      Account[]
+  userClans     UserClan[]
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String   @map("user_id")
+  expiresAt DateTime @map("expires_at")
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model Account {
+  id                    String    @id @default(uuid())
+  accountId             String    @map("account_id")
+  providerId            String    @map("provider_id")
+  userId                String    @map("user_id")
+  accessToken           String?   @map("access_token")
+  refreshToken          String?   @map("z")
+  idToken               String?   @map("id_token")
+  accessTokenExpiresAt  DateTime? @map("access_token_expires_at")
+  refreshTokenExpiresAt DateTime? @map("refresh_token_expires_at")
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Verification {
+  id         String   @id @default(uuid())
+  identifier String
+  value      String
+  expiresAt  DateTime @map("expires_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@index([identifier])
+  @@map("verifications")
+}
+
+model Clan {
+  id        String     @id @default(uuid())
+  name      String
+  tag       String     @unique // Tag do clan deve ser única (um clan pode ter vários usuários)
+  createdAt DateTime   @default(now()) @map("created_at")
+  updatedAt DateTime   @updatedAt @map("updated_at")
+
+  userClans UserClan[]
+
+  @@index([tag]) // Índice para buscas por tag
+  @@map("clans")
+}
+
+model UserClan {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  clanId    String   @map("clan_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clan      Clan     @relation(fields: [clanId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, clanId]) // Um usuário não pode ter o mesmo clan duas vezes
+  @@index([userId])
+  @@index([clanId])
+  @@map("users_clans")
+}
+
+model PlayerSnapshot {
+  playerTag      String   @id @db.VarChar(20) @map("player_tag")
+  playerName     String   @map("player_name")
+  lastTrophies   Int      @map("last_trophies")
+  lastAttackWins Int      @default(0) @map("last_attack_wins")
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@index([updatedAt])
+  @@map("player_snapshots")
+}
+
+enum LogType {
+  ATTACK
+  DEFENSE
+}
+
+model LegendLog {
+  id             Int      @id @default(autoincrement())
+  playerTag      String   @db.VarChar(20) @map("player_tag")
+  playerName     String   @db.VarChar(100) @map("player_name")
+  clanTag        String?  @db.VarChar(20) @map("clan_tag")
+  type           LogType
+  diff           Int
+  trophiesResult Int      @map("trophies_result")
+  timestamp      DateTime @default(now()) @map("timestamp")
+
+  @@index([playerTag, timestamp])
+  @@index([timestamp])
+  @@unique([playerTag, trophiesResult, timestamp])
+  @@map("legend_logs")
+}

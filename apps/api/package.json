@@ -1,0 +1,34 @@
+{
+  "name": "clashdata-server",
+  "version": "1.0.50",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "bun run --watch src/index.ts",
+    "db:generate": "bun --env-file .env --bun drizzle-kit generate",
+    "db:migrate": "bun --env-file .env --bun drizzle-kit migrate",
+    "db:reset": "psql $DATABASE_URL -c \"DROP SCHEMA public CASCADE; CREATE SCHEMA public;\" && drizzle-kit migrate"
+  },
+  "dependencies": {
+    "@bull-board/api": "^6.16.1",
+    "@bull-board/elysia": "^6.16.1",
+    "@elysiajs/cors": "^1.4.0",
+    "@elysiajs/openapi": "^1.4.13",
+    "@prisma/adapter-pg": "^7.2.0",
+    "@prisma/client": "^7.2.0",
+    "axios": "^1.13.2",
+    "better-auth": "^1.4.9",
+    "bullmq": "^5.66.3",
+    "dayjs": "^1.11.19",
+    "elysia": "latest",
+    "ioredis": "^5.8.2",
+    "pg": "^8.16.3",
+    "prisma": "^7.2.0",
+    "remove": "^0.1.5",
+    "zod": "^4.2.1"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.16.0",
+    "bun-types": "latest"
+  },
+  "module": "src/index.js"
+}
