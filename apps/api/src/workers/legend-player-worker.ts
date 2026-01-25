@@ -164,26 +164,19 @@ export const LegendPlayerWorker = new Worker(
   }
 );
 
-// Logs apenas para erros importantes (reduzir verbosidade)
+
 let completedCount = 0;
 let failedCount = 0;
-
-LegendPlayerWorker.on("completed", (job) => {
-  completedCount++;
-  const jobData = job.data as any;
-});
 
 LegendPlayerWorker.on("failed", (job, err) => {
   failedCount++;
   const errorMessage = err.message || "Erro desconhecido";
   const jobData = job?.data as any;
 
-  // Log apenas erros críticos (não 429, pois já são tratados)
   if (!errorMessage.includes("429") && !errorMessage.includes("rate limit")) {
     if (jobData?.type === "fan-out-master") {
       console.error(`❌ Job mestre (fan-out) falhou:`, errorMessage.substring(0, 200));
     } else {
-      // Log apenas alguns erros para não poluir o log
       if (failedCount % 10 === 0 || !errorMessage.includes("404")) {
         console.error(`❌ Job falhou para ${jobData?.playerTag}:`, errorMessage.substring(0, 100));
       }
