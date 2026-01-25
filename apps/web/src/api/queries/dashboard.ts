@@ -15,8 +15,8 @@ export const getDashboardDataQuickQueryOptions = (clanTag: string) =>
     queryKey: ["dashboard-data-quick", clanTag],
     queryFn: async () => {
       const cleanTag = normalizeTag(clanTag);
-      // Busca apenas 30 guerras para garantir ~20 normais rapidamente
-      const response = await apiFetch(endpoints.dashboard.getData(cleanTag, 30));
+      // Busca 100 guerras para ter dados dos últimos 4 meses rapidamente
+      const response = await apiFetch(endpoints.dashboard.getData(cleanTag, 100));
       return response as DashboardData;
     },
     staleTime: 0, // Sempre busca dados frescos

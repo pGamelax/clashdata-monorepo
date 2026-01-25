@@ -1,6 +1,6 @@
 import type { ColumnDef } from "@tanstack/react-table";
 import { Link } from "@tanstack/react-router";
-import { Plus, Minus } from "lucide-react";
+import { Plus, Minus, Trophy } from "lucide-react";
 
 export interface PlayerDayLog {
   playerTag: string;
@@ -80,7 +80,10 @@ export const columns: ColumnDef<PlayerDayLog>[] = [
     accessorKey: "final",
     header: "FINAL",
     cell: ({ row }) => (
-      <span className="font-semibold">{row.original.final.toLocaleString()}</span>
+      <div className="flex items-center gap-1.5">
+        <Trophy className="w-4 h-4 text-amber-500" />
+        <span className="font-semibold">{row.original.final.toLocaleString()}</span>
+      </div>
     ),
   },
 ];

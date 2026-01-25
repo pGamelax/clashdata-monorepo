@@ -177,17 +177,7 @@ LegendPlayerWorker.on("completed", (job) => {
   completedCount++;
   const jobData = job.data as any;
 
-  // Log detalhado para o job mestre
-  if (jobData?.type === "fan-out-master") {
-    console.log(
-      `✅ Fan-out Master: ${jobData.jobsCreated || 0} jobs criados para ${jobData.totalPlayers || 0} jogadores`
-    );
-  } else {
-    // Log apenas a cada X jobs para reduzir verbosidade
-    if (completedCount % LOG_INTERVAL === 0) {
-      console.log(`✅ ${completedCount} jobs de jogadores processados com sucesso`);
-    }
-  }
+  // Log detalhado removido para produção
 });
 
 LegendPlayerWorker.on("failed", (job, err) => {

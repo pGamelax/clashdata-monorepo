@@ -1,5 +1,3 @@
-"use client";
-
 import React, { useState } from "react";
 import { authClient } from "@/auth-client";
 import { cn } from "@/lib/utils";

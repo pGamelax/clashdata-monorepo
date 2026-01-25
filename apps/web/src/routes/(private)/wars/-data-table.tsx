@@ -25,7 +25,8 @@ import {
   ChevronDown,
   ChevronUp,
   History,
-  Sword
+  Sword,
+  X
 } from "lucide-react";
 import type { DateRange } from "react-day-picker";
 import { isWithinInterval, parseISO } from "date-fns";
@@ -47,7 +48,7 @@ interface DataTableProps {
 export function DataTable({ columns, data }: DataTableProps) {
   const [globalFilter, setGlobalFilter] = useState("");
   const [date, setDate] = useState<DateRange | undefined>();
-  const [warLimit, setWarLimit] = useState<number>(20);
+  const [selectedSeasons, setSelectedSeasons] = useState<number>(4); // Últimas 4 temporadas por padrão
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
 
   const { dynamicData } = useMemo(() => {
@@ -65,8 +66,36 @@ export function DataTable({ columns, data }: DataTableProps) {
     const sortedDates = Array.from(allDates).sort(
       (a, b) => new Date(b).getTime() - new Date(a).getTime(),
     );
-    const limitedDates =
-      warLimit > 0 ? new Set(sortedDates.slice(0, warLimit)) : allDates;
+
+    // Calcula data de X temporadas atrás (baseado no selectedSeasons)
+    // Se tem filtro de data customizado, não usa filtro de temporada
+    let limitedDates: Set<string>;
+    let seasonsAgoDate: Date | null = null;
+    
+    if (date?.from && date?.to) {
+      // Se tem filtro de data customizado, usa todas as datas (o filtro será aplicado depois)
+      limitedDates = new Set(sortedDates);
+    } else {
+      // Usa o selectedSeasons (padrão é 4 temporadas)
+      const seasonsToUse = selectedSeasons > 0 ? selectedSeasons : 4;
+      seasonsAgoDate = new Date();
+      seasonsAgoDate.setMonth(seasonsAgoDate.getMonth() - seasonsToUse);
+      seasonsAgoDate.setHours(0, 0, 0, 0); // Normaliza para início do dia
+      
+      // Filtra datas pelas últimas X temporadas
+      const filteredDatesBySeason = sortedDates.filter((dateStr) => {
+        try {
+          const dateObj = parseISO(dateStr);
+          if (isNaN(dateObj.getTime())) return false;
+          const dateObjNormalized = new Date(dateObj);
+          dateObjNormalized.setHours(0, 0, 0, 0);
+          return dateObjNormalized >= seasonsAgoDate!;
+        } catch {
+          return false;
+        }
+      });
+      limitedDates = new Set(filteredDatesBySeason);
+    }
 
     const totalClanWarDates = new Set<string>();
 
@@ -75,17 +104,35 @@ export function DataTable({ columns, data }: DataTableProps) {
         const playerUniqueWars = new Set<string>();
         const totalPts = new Set<string>();
         const filterFn = (action: WarAction) => {
-          const actionDate = parseISO(action.date);
-          const isInDateRange =
-            !date?.from ||
-            !date?.to ||
-            isWithinInterval(actionDate, {
-              start: date.from,
-              end: date.to,
-            });
-          const isWithinRecentLimit = limitedDates.has(action.date);
-
-          return isInDateRange && isWithinRecentLimit;
+          try {
+            const actionDate = parseISO(action.date);
+            
+            // Valida se a data é válida
+            if (isNaN(actionDate.getTime())) {
+              return false;
+            }
+            
+            // Se tem filtro de data customizado, usa ele (e ignora filtro de temporada)
+            if (date?.from && date?.to) {
+              return isWithinInterval(actionDate, {
+                start: date.from,
+                end: date.to,
+              });
+            }
+            
+            // Caso contrário, usa filtro de temporada
+            // Se temos uma data limite de temporada, compara diretamente
+            if (seasonsAgoDate) {
+              const actionDateNormalized = new Date(actionDate);
+              actionDateNormalized.setHours(0, 0, 0, 0);
+              return actionDateNormalized >= seasonsAgoDate;
+            }
+            
+            // Se não há data limite (filtro de data customizado), verifica se está no conjunto
+            return limitedDates.has(action.date);
+          } catch {
+            return false;
+          }
         };
 
         const attacks = (player.allAttacks || []).filter(filterFn);
@@ -148,7 +195,7 @@ export function DataTable({ columns, data }: DataTableProps) {
       .sort((a, b) => b.performanceScore - a.performanceScore);
 
     return { dynamicData: processed, warCount: totalClanWarDates.size };
-  }, [data, date, warLimit]);
+  }, [data, date, selectedSeasons]);
 
   const table = useReactTable({
     data: dynamicData,
@@ -176,29 +223,64 @@ export function DataTable({ columns, data }: DataTableProps) {
           </div>
 
           <div className="w-full md:w-64">
-            <DatePickerWithRange date={date} setDate={setDate} />
+            <DatePickerWithRange 
+              date={date} 
+              setDate={(newDate) => {
+                setDate(newDate);
+                // Remove filtro de temporada quando usa filtro de data
+                if (newDate?.from && newDate?.to) {
+                  setSelectedSeasons(0);
+                } else if (!newDate) {
+                  // Se removeu o filtro de data, volta para 4 temporadas
+                  setSelectedSeasons(4);
+                }
+              }} 
+            />
           </div>
 
           <div className="relative w-full md:w-64">
             <History className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10 pointer-events-none" />
             <Select
-              value={String(warLimit)}
-              onValueChange={(value) => setWarLimit(Number(value))}
+              value={String(selectedSeasons)}
+              onValueChange={(value) => {
+                const seasons = Number(value);
+                setSelectedSeasons(seasons);
+                // Remove filtro de data quando usa filtro de temporada
+                if (seasons > 0) {
+                  setDate(undefined);
+                }
+              }}
+              disabled={!!date}
             >
-              <SelectTrigger className="w-full h-11 pl-10 pr-3 rounded-xl border-2 border-border/50 bg-muted/30 backdrop-blur-sm focus:ring-2 focus:ring-primary focus:ring-offset-0 transition-all">
-                <SelectValue placeholder="Guerras" />
+              <SelectTrigger className="w-full h-11 pl-10 pr-3 rounded-xl border-2 border-border/50 bg-muted/30 backdrop-blur-sm focus:ring-2 focus:ring-primary focus:ring-offset-0 transition-all disabled:opacity-50">
+                <SelectValue placeholder="Temporada" />
               </SelectTrigger>
               <SelectContent className="rounded-xl border-2 border-border/50 bg-card/95 backdrop-blur-xl shadow-xl">
-                <SelectItem value="5">Últimas 5</SelectItem>
-                <SelectItem value="10">Últimas 10</SelectItem>
-                <SelectItem value="15">Últimas 15</SelectItem>
-                <SelectItem value="20">Últimas 20</SelectItem>
-                <SelectItem value="30">Últimas 30</SelectItem>
-                <SelectItem value="40">Últimas 40</SelectItem>
-                <SelectItem value="50">Últimas 50</SelectItem>
+                <SelectItem value="1">Última temporada</SelectItem>
+                <SelectItem value="2">Últimas 2 temporadas</SelectItem>
+                <SelectItem value="3">Últimas 3 temporadas</SelectItem>
+                <SelectItem value="4">Últimas 4 temporadas</SelectItem>
               </SelectContent>
             </Select>
           </div>
+
+          {/* Botão para limpar filtros */}
+          {(globalFilter || date || selectedSeasons !== 4) && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setGlobalFilter("");
+                setDate(undefined);
+                setSelectedSeasons(4);
+              }}
+              className="h-11 px-3 sm:px-4 rounded-xl border-2 border-border/50 bg-muted/30 backdrop-blur-sm hover:bg-muted/50 transition-all"
+            >
+              <X className="w-4 h-4 mr-2" />
+              <span className="hidden sm:inline">Limpar filtros</span>
+              <span className="sm:hidden">Limpar</span>
+            </Button>
+          )}
         </div>
       </div>
 

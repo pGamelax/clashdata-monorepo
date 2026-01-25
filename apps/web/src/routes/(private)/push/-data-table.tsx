@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, ChevronDown, ChevronUp, Plus, Minus } from "lucide-react";
+import { Search, ChevronDown, ChevronUp, Plus, Minus, Trophy } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -51,7 +51,7 @@ export function DataTable({ columns, data }: DataTableProps) {
       return (
         player.playerName.toLowerCase().includes(filter) ||
         player.playerTag.toLowerCase().includes(filter)
-      );
+    );
     });
   }, [currentData, globalFilter]);
 
@@ -197,7 +197,7 @@ export function DataTable({ columns, data }: DataTableProps) {
                               <Minus className="w-4 h-4 text-red-500" />
                               <h4 className="text-sm font-semibold text-foreground">
                                 Defesas
-                              </h4>
+                        </h4>
                             </div>
                           </div>
                           <div className="space-y-2">
@@ -215,18 +215,18 @@ export function DataTable({ columns, data }: DataTableProps) {
                                         <div className="flex items-center gap-2">
                                           <span className="font-semibold text-green-500">
                                             {attack.diff > 0 ? "+" : ""}{attack.diff}
-                                          </span>
+                                    </span>
                                           <span className="text-muted-foreground">
                                             → {attack.trophiesResult}
-                                          </span>
-                                        </div>
+                                    </span>
+                                  </div>
                                       </div>
                                     ) : (
                                       <div className="text-center py-2">
                                        
-                                      </div>
+                                    </div>
                                     )}
-                                  </div>
+                                    </div>
                                   
                                   {/* Defesa */}
                                   <div className="p-2 rounded bg-card/50">
@@ -240,7 +240,7 @@ export function DataTable({ columns, data }: DataTableProps) {
                                           <span className="text-muted-foreground">
                                             → {defense.trophiesResult}
                                           </span>
-                                        </div>
+                                    </div>
                                       </div>
                                     ) : (
                                       <div className="text-center py-2">
@@ -251,10 +251,10 @@ export function DataTable({ columns, data }: DataTableProps) {
                                 </div>
                               );
                             })}
-                          </div>
                         </div>
-                      </TableCell>
-                    </TableRow>
+                      </div>
+                    </TableCell>
+                  </TableRow>
                   );
                 })()}
               </React.Fragment>
@@ -272,16 +272,16 @@ export function DataTable({ columns, data }: DataTableProps) {
             <div
               key={rowId}
               className="bg-card border border-border rounded-xl p-4 space-y-3"
-            >
-              <div
+          >
+            <div
                 className="flex items-center justify-between cursor-pointer"
-                onClick={() =>
+              onClick={() =>
                   setExpandedRows((v) => ({
                     ...v,
                     [rowId]: !v[rowId],
                   }))
-                }
-              >
+              }
+            >
                 <div className="flex-1">
                   <Link
                     to="/players/$playerTag"
@@ -296,16 +296,19 @@ export function DataTable({ columns, data }: DataTableProps) {
                     <div className="flex items-center gap-1 text-sm font-semibold text-green-500">
                       <Plus className="w-3 h-3" />
                       {player.gain > 0 ? `${player.gain} (${player.gainCount})` : "0"}
-                    </div>
+                </div>
                     <div className="flex items-center gap-1 text-sm font-semibold text-red-500">
                       <Minus className="w-3 h-3" />
                       {player.loss > 0 ? `${player.loss} (${player.lossCount})` : "0"}
-                    </div>
-                    <div className="text-sm font-semibold ml-auto">
-                      Final: {player.final.toLocaleString()}
-                    </div>
+                  </div>
+                    <div className="text-sm font-semibold ml-auto flex flex-row gap-1 items-center">
+                    
+        <Trophy className="w-4 h-4 text-amber-500" />
+        <span className="font-semibold">{player.final.toLocaleString()}</span>
+      
                   </div>
                 </div>
+              </div>
                 {isExpanded ? (
                   <ChevronUp className="h-5 w-5 text-muted-foreground" />
                 ) : (
@@ -331,14 +334,14 @@ export function DataTable({ columns, data }: DataTableProps) {
                         <h4 className="text-sm font-semibold text-foreground">
                           Defesas
                         </h4>
-                      </div>
-                    </div>
+              </div>
+            </div>
                     <div className="space-y-2">
                       {Array.from({ length: maxCount }).map((_, i) => {
                         const attack = attacks[i];
                         const defense = defenses[i];
                         
-                        return (
+                    return (
                           <div key={i} className="grid grid-cols-2 gap-2">
                             {/* Ataque */}
                             <div className="p-2 rounded bg-muted/50">
@@ -348,18 +351,18 @@ export function DataTable({ columns, data }: DataTableProps) {
                                   <div className="flex items-center gap-2">
                                     <span className="font-semibold text-green-500">
                                       {attack.diff > 0 ? "+" : ""}{attack.diff}
-                                    </span>
+                          </span>
                                     <span className="text-muted-foreground">
                                       → {attack.trophiesResult}
-                                    </span>
-                                  </div>
+                          </span>
+                        </div>
                                 </div>
                               ) : (
                                 <div className="text-center py-2">
                                 
-                                </div>
+                          </div>
                               )}
-                            </div>
+                          </div>
                             
                             {/* Defesa */}
                             <div className="p-2 rounded bg-muted/50">
@@ -373,22 +376,22 @@ export function DataTable({ columns, data }: DataTableProps) {
                                     <span className="text-muted-foreground">
                                       → {defense.trophiesResult}
                                     </span>
-                                  </div>
+                          </div>
                                 </div>
                               ) : (
                                 <div className="text-center py-2">
                                   
                                 </div>
                               )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
                   </div>
                 );
               })()}
-            </div>
+          </div>
           );
         })}
       </div>

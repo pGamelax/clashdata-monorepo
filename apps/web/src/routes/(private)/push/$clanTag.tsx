@@ -10,6 +10,13 @@ import { handleClanErrorWithRedirect } from "@/lib/clan-error-handler";
 import { getClanLogsQueryOptions, getClanRankingQueryOptions } from "@/api";
 import { Link } from "@tanstack/react-router";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
 
 export const Route = createFileRoute("/(private)/push/$clanTag")({
   validateSearch: (search: Record<string, unknown>) => {
@@ -88,120 +95,126 @@ function RouteComponent() {
           </div>
         </header>
 
-        {/* Push and Ranking Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
-          {/* Logs Table - 3 columns */}
-          <div className="lg:col-span-3 space-y-3 sm:space-y-4">
-            <h2 className="text-lg sm:text-xl font-semibold tracking-tight flex items-center gap-2">
-              <BarChart3 className="w-5 h-5 text-primary" />
-              Legend League Attacks
-            </h2>
-
-            <div className="bg-card border border-border rounded-xl p-4 sm:p-5 lg:p-6 relative">
-              {isLoadingLogs || !legendLogs ? (
-                <DataTableSkeleton />
-              ) : (
-                <>
-                  {isFetchingLogs && (
-                    <div className="absolute top-2 right-2 z-10">
-                      <div className="bg-muted/90 backdrop-blur-sm border border-border rounded-lg px-2 py-1">
-                        <Skeleton className="h-3 w-20" />
-                      </div>
-                    </div>
-                  )}
-                  <DataTable columns={columns} data={legendLogs} />
-                </>
+        {/* Ranking Section - Carousel */}
+        {ranking && ranking.players.length > 0 && (
+          <div className="space-y-3 sm:space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg sm:text-xl font-semibold tracking-tight flex items-center gap-2">
+                <Trophy className="w-5 h-5 text-primary" />
+                Ranking Atual
+              </h2>
+            </div>
+            <div className="bg-card border border-border rounded-xl p-4 sm:p-5 relative">
+              {isFetchingRanking && (
+                <div className="absolute top-2 right-2 z-10">
+                  <div className="bg-muted/90 backdrop-blur-sm border border-border rounded-lg px-2 py-1">
+                    <Skeleton className="h-3 w-20" />
+                  </div>
+                </div>
               )}
+              <Carousel
+                opts={{
+                  align: "start",
+                  loop: false,
+                }}
+                className="w-full relative"
+              >
+                <CarouselContent className="-ml-2 md:-ml-4">
+                  {ranking.players.slice(0, 10).map((player) => {
+                    const isTop3 = player.rank <= 3;
+                    const isLegend = player.leagueTier?.name === "Legend League";
+                    return (
+                      <CarouselItem
+                        key={player.playerTag}
+                        className="pl-2 md:pl-4 basis-auto min-w-[140px] sm:min-w-[160px] md:min-w-[180px]"
+                      >
+                        <Link
+                          to="/players/$playerTag"
+                          params={{ playerTag: player.playerTag.replace("#", "") }}
+                          search={{ error: undefined }}
+                          className={`flex flex-col items-center gap-2 p-3 sm:p-4 rounded-lg hover:bg-muted/50 transition-colors border h-full ${
+                            isTop3
+                              ? "border-primary/20 bg-primary/5"
+                              : "border-transparent hover:border-border"
+                          }`}
+                        >
+                          <div
+                            className={`flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full font-bold text-sm sm:text-base ${
+                              player.rank === 1
+                                ? "bg-amber-500/20 text-amber-500 border-2 border-amber-500/30"
+                                : player.rank === 2
+                                ? "bg-slate-400/20 text-slate-400 border-2 border-slate-400/30"
+                                : player.rank === 3
+                                ? "bg-amber-700/20 text-amber-700 border-2 border-amber-700/30"
+                                : "bg-muted text-muted-foreground"
+                            }`}
+                          >
+                            {player.rank}
+                          </div>
+                          <div className="w-full min-w-0 text-center space-y-2">
+                            <div className="space-y-1">
+                              <div className="font-semibold text-sm sm:text-base text-foreground break-words line-clamp-2">
+                                {player.playerName}
+                              </div>
+                              {isLegend && (
+                                <span className="inline-block text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                                  LEGEND
+                                </span>
+                              )}
+                            </div>
+                            {player.leagueTier?.iconUrls?.small && (
+                              <img
+                                src={player.leagueTier.iconUrls.small}
+                                alt={player.leagueTier.name}
+                                className="w-6 h-6 sm:w-7 sm:h-7 mx-auto"
+                              />
+                            )}
+                            <div className="space-y-0.5">
+                              <div className="text-sm sm:text-base font-bold text-foreground">
+                                {player.trophies.toLocaleString()}
+                              </div>
+                              {player.bestTrophies > player.trophies && (
+                                <div className="text-[10px] text-muted-foreground">
+                                  Melhor: {player.bestTrophies.toLocaleString()}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </Link>
+                      </CarouselItem>
+                    );
+                  })}
+                </CarouselContent>
+                <CarouselPrevious className="hidden sm:flex absolute left-2 top-1/2 -translate-y-1/2 z-20 h-8 w-8 bg-background/80 backdrop-blur-sm border-2 border-border shadow-lg hover:bg-background hover:scale-110 transition-all" />
+                <CarouselNext className="hidden sm:flex absolute right-2 top-1/2 -translate-y-1/2 z-20 h-8 w-8 bg-background/80 backdrop-blur-sm border-2 border-border shadow-lg hover:bg-background hover:scale-110 transition-all" />
+              </Carousel>
             </div>
           </div>
+        )}
 
-          {/* Ranking Section - 1 column */}
-          {ranking && ranking.players.length > 0 && (
-            <div className="lg:col-span-1 space-y-3 sm:space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg sm:text-xl font-semibold tracking-tight flex items-center gap-2">
-                  <Trophy className="w-5 h-5 text-primary" />
-                  Ranking
-                </h2>
-              </div>
-              <div className="bg-card border border-border rounded-xl p-4 sm:p-5 lg:p-6 relative">
-                {isFetchingRanking && (
+        {/* Logs Table */}
+        <div className="space-y-3 sm:space-y-4">
+          <h2 className="text-lg sm:text-xl font-semibold tracking-tight flex items-center gap-2">
+            <BarChart3 className="w-5 h-5 text-primary" />
+            Legend League Attacks
+          </h2>
+
+          <div className="bg-card border border-border rounded-xl p-3 sm:p-4 lg:p-6 relative">
+            {isLoadingLogs || !legendLogs ? (
+              <DataTableSkeleton />
+            ) : (
+              <>
+                {isFetchingLogs && (
                   <div className="absolute top-2 right-2 z-10">
                     <div className="bg-muted/90 backdrop-blur-sm border border-border rounded-lg px-2 py-1">
                       <Skeleton className="h-3 w-20" />
                     </div>
                   </div>
                 )}
-                <div className="space-y-2">
-                  {ranking.players.slice(0, 10).map((player) => {
-                    const isTop3 = player.rank <= 3;
-                    const isLegend = player.leagueTier?.name === "Legend League";
-                    return (
-                      <Link
-                        key={player.playerTag}
-                        to="/players/$playerTag"
-                        params={{ playerTag: player.playerTag.replace("#", "") }}
-                        search={{ error: undefined }}
-                        className={`flex flex-col gap-2 p-3 rounded-lg hover:bg-muted/50 transition-colors border ${
-                          isTop3 ? "border-primary/20 bg-primary/5" : "border-transparent hover:border-border"
-                        }`}
-                      >
-                        <div className="flex items-center gap-2">
-                          <div
-                            className={`flex items-center justify-center w-6 h-6 rounded-full font-bold text-xs ${
-                              player.rank === 1
-                                ? "bg-amber-500/20 text-amber-500"
-                                : player.rank === 2
-                                ? "bg-slate-400/20 text-slate-400"
-                                : player.rank === 3
-                                ? "bg-amber-700/20 text-amber-700"
-                                : "bg-muted text-muted-foreground"
-                            }`}
-                          >
-                            {player.rank}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-1.5">
-                              <span className="font-semibold text-sm text-foreground truncate">
-                                {player.playerName}
-                              </span>
-                              {isLegend && (
-                                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium flex-shrink-0">
-                                  LEGEND
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          {player.leagueTier?.iconUrls?.small && (
-                            <img
-                              src={player.leagueTier.iconUrls.small}
-                              alt={player.leagueTier.name}
-                              className="w-6 h-6 flex-shrink-0"
-                            />
-                          )}
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <div className="text-xs text-muted-foreground font-mono truncate">
-                            {player.playerTag}
-                          </div>
-                          <div className="text-right">
-                            <div className="text-sm font-semibold text-foreground">
-                              {player.trophies.toLocaleString()}
-                            </div>
-                            {player.bestTrophies > player.trophies && (
-                              <div className="text-[10px] text-muted-foreground">
-                                Melhor: {player.bestTrophies.toLocaleString()}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </Link>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          )}
+                <DataTable columns={columns} data={legendLogs} />
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>

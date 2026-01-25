@@ -1,15 +1,11 @@
-"use client";
-
 import React, { useMemo, useState, useCallback } from "react";
-import { Check, Copy, Download, Users, Star, TrendingUp, Shield, X } from "lucide-react";
+import { Copy, Download, Users, Star, TrendingUp, Shield, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { ProcessedPlayer } from "./-types";
 import { cn } from "@/lib/utils";
 
@@ -37,44 +33,48 @@ const PlayerItem = React.memo(({
 }) => {
   return (
     <div
+      onClick={() => !isDisabled && onToggle()}
       className={cn(
-        "flex items-center gap-3 p-3 rounded-lg border transition-colors",
+        "flex items-center gap-3 p-3 sm:p-4 rounded-lg transition-all cursor-pointer border border-emerald-800/10",
+        "hover:bg-muted/50 active:scale-[0.98]",
         player.isCurrentMember
-          ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800"
-          : "bg-card border-border",
-        isSelected && "ring-2 ring-primary",
-        isDisabled && "opacity-50 cursor-not-allowed"
+          ? "bg-emerald-50 dark:bg-emerald-950/20"
+          : "bg-card",
+        isDisabled && "opacity-50 cursor-not-allowed hover:bg-card"
       )}
     >
-      <Checkbox
-        checked={isSelected}
-        onCheckedChange={onToggle}
-        disabled={isDisabled}
-      />
+      <div className="flex-shrink-0">
+        <Checkbox
+          checked={isSelected}
+          onCheckedChange={onToggle}
+          disabled={isDisabled}
+          onClick={(e) => e.stopPropagation()}
+        />
+      </div>
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-1">
-          <span className="font-semibold text-foreground truncate">
+        <div className="flex items-center gap-2 mb-1.5 sm:mb-2 flex-wrap">
+          <span className="font-semibold text-sm sm:text-base text-foreground truncate">
             {player.name}
           </span>
           {player.isCurrentMember && (
-            <Badge variant="default" className="text-xs bg-emerald-600">
-              No Clã
+            <Badge variant="default" className="text-xs bg-emerald-600 shrink-0 font-semibold px-2 py-0.5">
+              ✓ No Clã
             </Badge>
           )}
         </div>
-        <div className="flex items-center gap-4 text-xs text-muted-foreground">
-          <span className="font-mono">{player.tag}</span>
+        <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs text-muted-foreground">
+          <span className="font-mono text-[10px] sm:text-xs">{player.tag}</span>
           <span className="flex items-center gap-1">
-            <Star className="w-3 h-3" />
-            {player.avgStars}
+            <Star className="w-3 h-3 sm:w-4 sm:h-4" />
+            <span className="text-xs sm:text-sm font-medium">{player.avgStars}</span>
           </span>
           <span className="flex items-center gap-1">
-            <TrendingUp className="w-3 h-3" />
-            {player.performanceScore.toFixed(2)}
+            <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4" />
+            <span className="text-xs sm:text-sm font-medium">{player.performanceScore.toFixed(2)}</span>
           </span>
           <span className="flex items-center gap-1">
-            <Shield className="w-3 h-3" />
-            {player.attackCount} ataques
+            <Shield className="w-3 h-3 sm:w-4 sm:h-4" />
+            <span className="text-xs sm:text-sm">{player.attackCount} ataques</span>
           </span>
         </div>
       </div>
@@ -141,12 +141,8 @@ export function CWLSelector({ players, currentClanMembers, clanName }: CWLSelect
       );
     }
     
-    // Ordena
+    // Ordena apenas por performance score (pontos)
     return filtered.sort((a, b) => {
-      // Prioriza membros atuais
-      if (a.isCurrentMember && !b.isCurrentMember) return -1;
-      if (!a.isCurrentMember && b.isCurrentMember) return 1;
-      // Depois ordena por performance score
       return b.performanceScore - a.performanceScore;
     });
   }, [processedPlayers, searchTerm]);
@@ -221,84 +217,99 @@ export function CWLSelector({ players, currentClanMembers, clanName }: CWLSelect
   }, [shareableText, clanName]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <Shield className="w-5 h-5" />
+        <CardHeader className="pb-3 sm:pb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+            <div className="flex-1 min-w-0">
+              <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+                <Shield className="w-4 h-4 sm:w-5 sm:h-5" />
                 Seleção CWL - Liga de Clãs
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-xs sm:text-sm mt-1">
                 Selecione os 15 melhores jogadores para participar da CWL
               </CardDescription>
             </div>
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-sm">
+            <div className="flex items-center gap-2 shrink-0">
+              <Badge variant="outline" className="text-xs sm:text-sm px-2 sm:px-3 py-1">
                 {selectedPlayers.size}/15 selecionados
               </Badge>
             </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-3 sm:space-y-4">
           {/* Search */}
           <div className="relative">
             <Input
               placeholder="Buscar jogador por nome ou tag..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
+              className="pl-9 sm:pl-10 h-9 sm:h-10 text-sm"
             />
-            <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Users className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground" />
           </div>
 
-          {/* Info Alert */}
-          <Alert>
-            <AlertDescription className="text-sm">
-              <strong>💡 Dica:</strong> Os jogadores que estão no clã atualmente aparecem destacados em verde.
-              Você pode selecionar até 15 jogadores baseado nas últimas 50 guerras normais.
-            </AlertDescription>
-          </Alert>
-
           {/* Players List */}
-          <ScrollArea className="h-[500px] rounded-md border p-4">
+          <ScrollArea className="h-[400px] sm:h-[500px] rounded-md  4">
             <div className="space-y-2">
-              {availablePlayers.map((player) => {
-                const isSelected = selectedPlayers.has(player.tag);
-                const isDisabled = !isSelected && selectedPlayers.size >= 15;
+              {availablePlayers.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                  <Users className="w-8 h-8 sm:w-12 sm:h-12 text-muted-foreground/50 mb-2 sm:mb-4" />
+                  <p className="text-sm sm:text-base font-medium text-foreground mb-1">
+                    Nenhum jogador encontrado
+                  </p>
+                  <p className="text-xs sm:text-sm text-muted-foreground">
+                    {searchTerm ? "Tente buscar com outro termo" : "Nenhum jogador disponível"}
+                  </p>
+                </div>
+              ) : (
+                availablePlayers.map((player) => {
+                  const isSelected = selectedPlayers.has(player.tag);
+                  const isDisabled = !isSelected && selectedPlayers.size >= 15;
 
-                return (
-                  <PlayerItem
-                    key={player.tag}
-                    player={player}
-                    isSelected={isSelected}
-                    isDisabled={isDisabled}
-                    onToggle={() => togglePlayer(player.tag)}
-                  />
-                );
-              })}
+                  return (
+                    <PlayerItem
+                      key={player.tag}
+                      player={player}
+                      isSelected={isSelected}
+                      isDisabled={isDisabled}
+                      onToggle={() => togglePlayer(player.tag)}
+                    />
+                  );
+                })
+              )}
             </div>
           </ScrollArea>
 
           {/* Actions */}
           {selectedPlayers.size > 0 && (
-            <div className="flex items-center gap-2 pt-4 border-t">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-3 sm:pt-4 border-t">
               <Button
                 onClick={() => setShowShareView(true)}
-                className="flex-1"
+                className="flex-1 sm:flex-initial sm:flex-1"
                 variant="default"
+                size="sm"
               >
-                <Users className="w-4 h-4 mr-2" />
-                Ver Lista Compartilhável
+                <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-2" />
+                <span className="text-xs sm:text-sm">Ver Lista</span>
               </Button>
-              <Button onClick={copyToClipboard} variant="outline">
-                <Copy className="w-4 h-4 mr-2" />
-                Copiar
+              <Button 
+                onClick={copyToClipboard} 
+                variant="outline"
+                size="sm"
+                className="flex-1 sm:flex-initial"
+              >
+                <Copy className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-2" />
+                <span className="text-xs sm:text-sm">Copiar</span>
               </Button>
-              <Button onClick={downloadAsText} variant="outline">
-                <Download className="w-4 h-4 mr-2" />
-                Baixar
+              <Button 
+                onClick={downloadAsText} 
+                variant="outline"
+                size="sm"
+                className="flex-1 sm:flex-initial"
+              >
+                <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-2" />
+                <span className="text-xs sm:text-sm">Baixar</span>
               </Button>
             </div>
           )}
@@ -307,35 +318,40 @@ export function CWLSelector({ players, currentClanMembers, clanName }: CWLSelect
 
       {/* Share View Modal */}
       {showShareView && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <Card className="w-full max-w-2xl max-h-[90vh] flex flex-col">
-            <CardHeader>
+        <div 
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-3 sm:p-4"
+          onClick={() => setShowShareView(false)}
+        >
+          <Card 
+            className="w-full max-w-2xl max-h-[90vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <CardHeader className="pb-3 sm:pb-4">
               <div className="flex items-center justify-between">
-                <CardTitle>Lista Compartilhável - CWL</CardTitle>
+                <CardTitle className="text-base sm:text-lg">Lista Compartilhável - CWL</CardTitle>
                 <Button
                   variant="ghost"
                   size="icon"
                   onClick={() => setShowShareView(false)}
+                  className="h-8 w-8 sm:h-9 sm:w-9"
                 >
                   <X className="w-4 h-4" />
                 </Button>
               </div>
             </CardHeader>
-            <CardContent className="flex-1 overflow-auto">
-              <div className="space-y-4">
-                <div className="bg-muted p-4 rounded-lg font-mono text-sm whitespace-pre-wrap">
-                  {shareableText}
-                </div>
-                <div className="flex gap-2">
-                  <Button onClick={copyToClipboard} className="flex-1">
-                    <Copy className="w-4 h-4 mr-2" />
-                    Copiar Texto
-                  </Button>
-                  <Button onClick={downloadAsText} variant="outline" className="flex-1">
-                    <Download className="w-4 h-4 mr-2" />
-                    Baixar TXT
-                  </Button>
-                </div>
+            <CardContent className="flex-1 overflow-auto space-y-3 sm:space-y-4">
+              <div className="bg-muted p-3 sm:p-4 rounded-lg font-mono text-[10px] sm:text-xs leading-relaxed whitespace-pre-wrap overflow-x-auto">
+                {shareableText}
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Button onClick={copyToClipboard} className="flex-1" size="sm">
+                  <Copy className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-2" />
+                  <span className="text-xs sm:text-sm">Copiar Texto</span>
+                </Button>
+                <Button onClick={downloadAsText} variant="outline" className="flex-1" size="sm">
+                  <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-2" />
+                  <span className="text-xs sm:text-sm">Baixar TXT</span>
+                </Button>
               </div>
             </CardContent>
           </Card>

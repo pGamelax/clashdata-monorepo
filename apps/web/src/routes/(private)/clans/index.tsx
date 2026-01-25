@@ -45,7 +45,7 @@ function RouteComponent() {
     try {
       router.history.push(`/wars/${tag.replace("#", "")}`);
     } catch (error) {
-      console.error("Erro ao definir clã ativo:", error);
+      // Silenciosamente ignora erros de navegação
     }
   };
 

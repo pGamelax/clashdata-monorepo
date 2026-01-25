@@ -117,10 +117,6 @@ export function PushLogsTable({ data }: PushLogsTableProps) {
   // Agrupar logs por data (considerando horário de São Paulo, dia termina às 2:00)
   const logsByDate = useMemo(() => {
     const dateMap = new Map<string, DayLog>();
-    
-    // Debug: verificar quantos logs estão chegando
-    console.log('Total de logs recebidos:', data.logs.length);
-    
     data.logs.forEach((log) => {
       const dateKey = getDateKeyForSaoPaulo(log.timestamp);
       
@@ -159,10 +155,6 @@ export function PushLogsTable({ data }: PushLogsTableProps) {
         }
       }
     });
-    
-    // Debug: verificar quantos dias foram criados
-    console.log('Total de dias agrupados:', dateMap.size);
-    console.log('Datas:', Array.from(dateMap.keys()).sort((a, b) => b.localeCompare(a)));
     
     // Calcular o final (troféus após o último log do dia) para cada dia
     dateMap.forEach((dayLog) => {

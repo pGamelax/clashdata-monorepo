@@ -72,12 +72,7 @@ apiClient.interceptors.response.use(
     
     // Erro 429 (rate limit) - apenas loga, deixa o BullMQ fazer retry
     if (error.response?.status === 429) {
-      // Aumenta o intervalo temporariamente quando recebe 429
-      // Isso ajuda a evitar mais 429s
-      const currentInterval = MIN_INTERVAL_MS;
-      const increasedInterval = currentInterval * 2; // Dobra o intervalo temporariamente
-      console.warn(`⚠️ Rate limit 429 detectado, aumentando intervalo para ${increasedInterval}ms temporariamente`);
-      // O BullMQ vai fazer retry com backoff, então apenas lança o erro
+      // Rate limit 429 - BullMQ vai fazer retry com backoff
       throw error;
     }
     
