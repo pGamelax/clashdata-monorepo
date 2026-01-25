@@ -18,15 +18,16 @@ export const legendLogs = new Elysia({ prefix: "/legend-logs" })
     "/player",
     async ({ query }) => {
       const { playerTag } = query;
-      const limit = query.limit || 50;
+      // Aumenta o limite padrão para buscar todos os logs desde o início da temporada
+      const limit = query.limit || 10000; // Limite muito alto para pegar todos os logs
       const offset = query.offset || 0;
 
       const normalizedTag = normalizeTag(playerTag);
 
       // Adiciona o jogador ao snapshot e à fila de monitoramento
       // Faz isso de forma assíncrona para não bloquear a resposta
-      addPlayerToSnapshotAndQueue(normalizedTag).catch((error) => {
-        console.debug(`Não foi possível adicionar ${normalizedTag} ao snapshot/queue:`, error.message);
+      addPlayerToSnapshotAndQueue(normalizedTag).catch(() => {
+        // Ignora erros ao adicionar ao snapshot/queue
       });
 
       const legendLogService = new LegendLogService();
@@ -90,24 +91,32 @@ export const legendLogs = new Elysia({ prefix: "/legend-logs" })
   )
   .get(
     "/clan",
-    async ({ query, user }) => {
-      const { clanTag } = query;
-      const limit = query.limit || 100;
-      const offset = query.offset || 0;
+    async ({ query, user, set }) => {
+      try {
+        const { clanTag } = query;
+        const limit = query.limit || 50; // Limite padrão reduzido para performance
+        const offset = query.offset || 0;
 
-      const normalizedTag = normalizeTag(clanTag);
+        const normalizedTag = normalizeTag(clanTag);
 
-      // Verifica se o clan pertence ao usuário logado
-      await verifyClanOwnership(normalizedTag, user.id);
+        // Verifica se o clan pertence ao usuário logado
+        await verifyClanOwnership(normalizedTag, user.id);
 
-      const legendLogService = new LegendLogService();
-      const result = await legendLogService.getClanLogs({
-        clanTag: normalizedTag,
-        limit,
-        offset,
-      });
+        const legendLogService = new LegendLogService();
+        const result = await legendLogService.getClanLogs({
+          clanTag: normalizedTag,
+          limit,
+          offset,
+        });
 
-      return result;
+        return result;
+      } catch (error: any) {
+        set.status = 500;
+        return {
+          error: error.message || "Erro ao buscar logs do clan",
+          message: "Ocorreu um erro ao processar a requisição. Tente novamente mais tarde.",
+        };
+      }
     },
     {
       auth: true,
@@ -156,6 +165,67 @@ export const legendLogs = new Elysia({ prefix: "/legend-logs" })
       query: LegendLogModel.getClanLogsQuery,
       response: {
         200: LegendLogModel.clanLogsResponse,
+        400: LegendLogModel.errorResponse,
+        403: LegendLogModel.errorResponse,
+        404: LegendLogModel.errorResponse,
+      },
+    }
+  )
+  .get(
+    "/clan-ranking",
+    async ({ query, user }) => {
+      const { clanTag } = query;
+
+      const normalizedTag = normalizeTag(clanTag);
+
+      // Verifica se o clan pertence ao usuário logado
+      await verifyClanOwnership(normalizedTag, user.id);
+
+      const legendLogService = new LegendLogService();
+      const result = await legendLogService.getClanRanking({
+        clanTag: normalizedTag,
+      });
+
+      return result;
+    },
+    {
+      auth: true,
+      detail: {
+        summary: "Obter ranking atual dos jogadores do clan",
+        description:
+          "Busca o clan na API da Supercell e retorna os jogadores ordenados por troféus (ranking atual). " +
+          "Os dados são atualizados em tempo real da API da Supercell.",
+        tags: ["Legend Logs"],
+        examples: [
+          {
+            summary: "Exemplo de resposta",
+            description: "Ranking dos jogadores ordenado por troféus",
+            value: {
+              clanName: "Clan Name",
+              clanTag: "#CLAN123",
+              players: [
+                {
+                  rank: 1,
+                  playerTag: "#ABC123",
+                  playerName: "Player Name",
+                  townHallLevel: 15,
+                  trophies: 5430,
+                  bestTrophies: 5600,
+                  expLevel: 200,
+                  role: "leader",
+                  league: {
+                    id: 29000022,
+                    name: "Legend League",
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+      query: LegendLogModel.getClanLogsQuery,
+      response: {
+        200: LegendLogModel.clanRankingResponse,
         400: LegendLogModel.errorResponse,
         403: LegendLogModel.errorResponse,
         404: LegendLogModel.errorResponse,

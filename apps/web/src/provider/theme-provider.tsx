@@ -26,17 +26,12 @@ export function ThemeProvider({
   storageKey = "vite-ui-theme",
   ...props
 }: ThemeProviderProps) {
-  // Always use dark theme - no switching allowed
   const [theme] = useState<Theme>("dark")
 
   useEffect(() => {
     const root = window.document.documentElement
-
-    // Always ensure dark theme is applied
     root.classList.remove("light", "system")
     root.classList.add("dark")
-    
-    // Ensure localStorage is set to dark
     localStorage.setItem(storageKey, "dark")
   }, [storageKey])
 
@@ -44,7 +39,6 @@ export function ThemeProvider({
     theme,
     setTheme: () => {
       // Theme switching disabled - always dark
-      // This function exists for compatibility but does nothing
     },
   }
 

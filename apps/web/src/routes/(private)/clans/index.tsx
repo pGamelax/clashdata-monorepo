@@ -1,13 +1,8 @@
 import { ChevronRight, LayoutGrid, XCircle } from "lucide-react";
 import { createFileRoute, useRouter, useNavigate } from "@tanstack/react-router";
-import { queryOptions, useQuery } from "@tanstack/react-query";
-import { apiFetch } from "@/lib/api";
+import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-
-const clansQueryOptions = queryOptions({
-  queryKey: ["my-clans"],
-  queryFn: () => apiFetch(`${import.meta.env.VITE_API_URL}/clans/get-clans`),
-});
+import { getClansQueryOptions } from "@/api";
 
 export const Route = createFileRoute("/(private)/clans/")({
   validateSearch: (search: Record<string, unknown>) => {
@@ -17,7 +12,7 @@ export const Route = createFileRoute("/(private)/clans/")({
   },
   loader: async ({ context: { queryClient } }) => {
     try {
-      await Promise.all([queryClient.ensureQueryData(clansQueryOptions)]);
+      await Promise.all([queryClient.ensureQueryData(getClansQueryOptions)]);
     } catch (error) {
       // Erros são tratados no componente
     }
@@ -27,7 +22,7 @@ export const Route = createFileRoute("/(private)/clans/")({
 });
 
 function RouteComponent() {
-  const { data: clans } = useQuery(clansQueryOptions);
+  const { data: clans } = useQuery(getClansQueryOptions);
   const isEmpty = clans.length === 0;
   const router = useRouter();
   const navigate = useNavigate();

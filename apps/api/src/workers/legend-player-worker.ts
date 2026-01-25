@@ -34,36 +34,24 @@ async function processPlayer(playerTag: string) {
   // Só cria logs se o jogador estiver na Legend League E houver mudança de troféus
   if (isInLegendLeague && lastState && currentTrophies !== lastState.lastTrophies) {
     const trophyDiff = currentTrophies - lastState.lastTrophies;
-    const attackDiff = currentAttacks - (lastState.lastAttackWins || 0);
 
-    // Calcula quantos eventos ocorreram baseado nos ataques ou diferença de troféus
-    const numEvents =
-      attackDiff > 0
-        ? attackDiff
-        : Math.max(1, Math.ceil(Math.abs(trophyDiff) / 40));
-
-    const avgDiff = Math.floor(trophyDiff / numEvents);
-    const remainder = trophyDiff % numEvents;
-
-    const logsData = [];
-    for (let i = 0; i < numEvents; i++) {
-      const finalDiff = i === numEvents - 1 ? avgDiff + remainder : avgDiff;
-      if (finalDiff !== 0) {
-        logsData.push({
+    // Salva apenas um log com a diferença total de troféus
+    // Não divide por eventos - salva a diferença real
+    if (trophyDiff !== 0) {
+      await prisma.legendLog.create({
+        data: {
           playerTag: normalizedPlayerTag,
           playerName: player.name,
           clanTag: clanTag || null,
           type: trophyDiff > 0 ? ("ATTACK" as const) : ("DEFENSE" as const),
-          diff: finalDiff,
+          diff: trophyDiff, // Diferença total, não dividida
           trophiesResult: currentTrophies,
-        });
-      }
-    }
-
-    if (logsData.length > 0) {
-      await prisma.legendLog.createMany({
-        data: logsData,
-        skipDuplicates: true,
+        },
+      }).catch((err) => {
+        // Ignora erros de duplicata (unique constraint)
+        if (!err.message?.includes("Unique constraint") && !err.code?.includes("P2002")) {
+          throw err;
+        }
       });
     }
   }

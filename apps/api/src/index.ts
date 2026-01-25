@@ -18,7 +18,7 @@ import { legendLogs } from "./modules/legend-logs";
 import { admin } from "./modules/admin";
 
 //workers
-import "./workers/legend-player-worker";
+//import "./workers/legend-player-worker";
 import { startClanMembersScheduler } from "./workers/clan-members-scheduler";
 import { startPlayerSnapshotScheduler, initializePlayerSnapshotQueue } from "./workers/player-snapshot-scheduler";
 
@@ -110,7 +110,7 @@ const app = new Elysia()
 console.log(
   `🦊 Elysia is running at ${app.server?.hostname}:${app.server?.port}`
 );
-
+/* 
 redisConnection.on("ready", async () => {
   console.log("🚀 Iniciando schedulers de monitoramento de jogadores...");
   
@@ -133,3 +133,4 @@ if (redisConnection.status === "ready") {
     startPlayerSnapshotScheduler();
   })();
 }
+ */

@@ -4,7 +4,7 @@ export interface WarAction {
   date: string;
   stars: number;
   destruction: number;
-  opponent: string;
+  opponent?: string; // Opcional para defesas
 }
 
 export interface PlayerStats {
@@ -23,6 +23,7 @@ export interface ProcessedPlayer extends PlayerStats {
   avgDefenseStars: string;
   avgDefenseDestruction: string;
   displayAttacks: WarAction[];
+  displayDefenses: WarAction[];
   warCount: number;
 }
 

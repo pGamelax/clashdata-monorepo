@@ -4,20 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, Users, TrendingUp, Target, Award, XCircle } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { apiFetch, ApiError } from "@/lib/api";
-import { queryOptions } from "@tanstack/react-query";
-
-const searchPlayerQueryOptions = (playerTag: string) =>
-  queryOptions({
-    queryKey: ["search-player", playerTag],
-    queryFn: async () => {
-      if (!playerTag || playerTag.trim() === "") return null;
-      const cleanTag = playerTag.replace(/#|%23/g, "").trim();
-      return await apiFetch(
-        `${import.meta.env.VITE_API_URL}/players?playerTag=${cleanTag}`,
-      );
-    },
-  });
+import { ApiError, searchPlayerQueryOptions } from "@/api";
 
 export const Route = createFileRoute("/(private)/players/")({
   validateSearch: (search: Record<string, unknown>) => {

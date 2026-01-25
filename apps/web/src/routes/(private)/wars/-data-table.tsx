@@ -25,6 +25,7 @@ import {
   ChevronDown,
   ChevronUp,
   History,
+  Sword
 } from "lucide-react";
 import type { DateRange } from "react-day-picker";
 import { isWithinInterval, parseISO } from "date-fns";
@@ -140,6 +141,7 @@ export function DataTable({ columns, data }: DataTableProps) {
           avgDefenseDestruction:
             defenseCount > 0 ? (totalDefDestr / defenseCount).toFixed(0) : "0",
           displayAttacks: attacks,
+          displayDefenses: defenses,
         };
       })
       .filter((p) => p.warCount > 0)
@@ -193,6 +195,7 @@ export function DataTable({ columns, data }: DataTableProps) {
                 <SelectItem value="20">Últimas 20</SelectItem>
                 <SelectItem value="30">Últimas 30</SelectItem>
                 <SelectItem value="40">Últimas 40</SelectItem>
+                <SelectItem value="50">Últimas 50</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -252,47 +255,55 @@ export function DataTable({ columns, data }: DataTableProps) {
               </div>
             </div>
 
-            {expandedRows[row.id] && (
-              <div className="p-4 bg-muted/20 border-t-2 border-border/50 space-y-3">
-                {row.original.displayAttacks.map((att, i) => (
-                  <div
-                    key={i}
-                    className="p-4 rounded-xl bg-card/80 backdrop-blur-sm border-2 border-border/50 shadow-md hover:shadow-lg transition-all"
-                  >
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-sm font-bold uppercase text-muted-foreground">
-                        Ataque {i + 1}
-                      </span>
-                      <div className="flex flex-row items-center gap-2">
-                        <div
-                          className={`flex items-center gap-1 ${att.destruction < 50 ? "bg-destructive/10" : att.destruction < 80 && att.destruction > 51 ? "bg-amber-600/10" : "bg-primary/10"} px-2 py-0.5 rounded-full ${att.destruction < 50 ? "text-destructive" : att.destruction < 80 && att.destruction > 51 ? "text-amber-600" : "text-primary"}  `}
-                        >
-                          <span className="text-xs font-bold">
-                            {att.destruction}%
+            {expandedRows[row.id] && (() => {
+              return (
+                <div className="p-4 bg-muted/20 border-t-2 border-border/50">
+                  {/* Cabeçalho */}
+                  <div className="flex items-center gap-2 mb-4">
+                    <Sword className="w-4 h-4 text-primary" />
+                    <h4 className="text-sm font-semibold text-foreground">
+                      Ataques Feitos
+                    </h4>
+                  </div>
+
+                  {/* Apenas Ataques */}
+                  <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                    {row.original.displayAttacks.map((att, i) => (
+                      <div key={i} className="p-3 sm:p-4 rounded-xl bg-card/80 backdrop-blur-sm border-2 border-border/50 shadow-md hover:shadow-lg transition-all min-w-0 overflow-hidden">
+                        <div className="flex justify-between items-center mb-2 gap-2">
+                          <span className="text-xs sm:text-sm font-bold uppercase text-muted-foreground truncate">
+                            Ataque {i + 1}
+                          </span>
+                          <div className="flex flex-row items-center gap-1.5 flex-shrink-0">
+                            <div
+                              className={`flex items-center gap-1 ${att.destruction < 50 ? "bg-destructive/10" : att.destruction < 80 && att.destruction > 51 ? "bg-amber-600/10" : "bg-primary/10"} px-1.5 py-0.5 rounded-full ${att.destruction < 50 ? "text-destructive" : att.destruction < 80 && att.destruction > 51 ? "text-amber-600" : "text-primary"}`}
+                            >
+                              <span className="text-[10px] sm:text-xs font-bold whitespace-nowrap">
+                                {att.destruction}%
+                              </span>
+                            </div>
+                            <div
+                              className={`flex items-center gap-1 ${att.stars == 3 ? "bg-primary/10" : att.stars == 2 ? "bg-amber-600/10" : "bg-destructive/10"} px-1.5 py-0.5 rounded-full ${att.stars == 3 ? "text-primary" : att.stars == 2 ? "text-amber-600" : "text-destructive"}`}
+                            >
+                              <span className="text-[10px] sm:text-xs font-bold whitespace-nowrap">{att.stars}</span>
+                              <Star size={8} className="fill-current flex-shrink-0" />
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex flex-col gap-1 min-w-0">
+                          <div className="font-bold text-xs sm:text-sm truncate">
+                            {att.opponent}
+                          </div>
+                          <span className="text-[10px] text-muted-foreground font-normal">
+                            {new Date(parseISO(att.date)).toLocaleDateString("pt-BR")}
                           </span>
                         </div>
-                        <div
-                          className={`flex items-center gap-1 ${att.stars == 3 ? "bg-primary/10" : att.stars == 2 ? "bg-amber-600/10" : "bg-destructive/10"} px-2 py-0.5 rounded-full ${att.stars == 3 ? "text-primary" : att.stars == 2 ? "text-amber-600" : "text-destructive"}`}
-                        >
-                          <span className="text-xs font-bold">{att.stars}</span>
-                          <Star size={10} className="fill-current" />
-                        </div>
                       </div>
-                    </div>
-                    <div className="font-bold text-sm truncate flex justify-between items-center">
-                      <span className="max-w-37.5 truncate">
-                        {att.opponent}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground font-normal">
-                        {new Date(parseISO(att.date)).toLocaleDateString(
-                          "pt-BR",
-                        )}
-                      </span>
-                    </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            )}
+                </div>
+              );
+            })()}
           </div>
         ))}
       </div>
@@ -337,52 +348,60 @@ export function DataTable({ columns, data }: DataTableProps) {
                     </TableCell>
                   ))}
                 </TableRow>
-                {expandedRows[row.id] && (
-                  <TableRow className="bg-muted/10 border-none">
-                    <TableCell colSpan={columns.length} className="p-6">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        {row.original.displayAttacks.map((att, i) => (
-                          <div
-                            key={i}
-                            className="p-4 rounded-xl bg-card/80 backdrop-blur-sm border-2 border-border/50 shadow-md hover:shadow-lg transition-all"
-                          >
-                            <div className="flex justify-between items-center mb-2">
-                              <span className="text-sm font-bold uppercase text-muted-foreground">
-                                Ataque {i + 1}
-                              </span>
-                              <div className="flex flex-row items-center gap-2">
-                                <div
-                                  className={`flex items-center gap-1 ${att.destruction < 50 ? "bg-destructive/10" : att.destruction < 80 && att.destruction > 51 ? "bg-amber-600/10" : "bg-primary/10"} px-2 py-0.5 rounded-full ${att.destruction < 50 ? "text-destructive" : att.destruction < 80 && att.destruction > 51 ? "text-amber-600" : "text-primary"}`}
-                                >
-                                  <span className="text-sm font-bold">
-                                    {att.destruction}
-                                  </span>
-                                  <Percent size={10} />
-                                </div>
-                                <div
-                                  className={`flex items-center gap-1 ${att.stars == 3 ? "bg-primary/10" : att.stars == 2 ? "bg-amber-600/10" : "bg-destructive/10"} px-2 py-0.5 rounded-full ${att.stars == 3 ? "text-primary" : att.stars == 2 ? "text-amber-600" : "text-destructive"}`}
-                                >
-                                  <span className="text-sm font-bold">
-                                    {att.stars}
-                                  </span>
-                                  <Star size={10} className="fill-current" />
+                {expandedRows[row.id] && (() => {
+                  return (
+                    <TableRow className="bg-muted/10 border-none">
+                      <TableCell colSpan={columns.length} className="p-6">
+                        {/* Cabeçalho */}
+                        <div className="flex items-center gap-2 mb-4">
+                          <Sword className="w-5 h-5 text-primary" />
+                          <h4 className="text-base font-semibold text-foreground">
+                            Ataques Feitos
+                          </h4>
+                        </div>
+
+                        {/* Apenas Ataques */}
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 lg:gap-3">
+                          {row.original.displayAttacks.map((att, i) => (
+                            <div key={i} className="p-3 lg:p-4 rounded-xl bg-card/80 backdrop-blur-sm border-2 border-border/50 shadow-md hover:shadow-lg transition-all min-w-0 overflow-hidden">
+                              <div className="flex justify-between items-center mb-2 gap-2">
+                                <span className="text-xs sm:text-sm font-bold uppercase text-muted-foreground truncate">
+                                  Ataque {i + 1}
+                                </span>
+                                <div className="flex flex-row items-center gap-1.5 flex-shrink-0">
+                                  <div
+                                    className={`flex items-center gap-1 ${att.destruction < 50 ? "bg-destructive/10" : att.destruction < 80 && att.destruction > 51 ? "bg-amber-600/10" : "bg-primary/10"} px-1.5 py-0.5 rounded-full ${att.destruction < 50 ? "text-destructive" : att.destruction < 80 && att.destruction > 51 ? "text-amber-600" : "text-primary"}`}
+                                  >
+                                    <span className="text-xs font-bold whitespace-nowrap">
+                                      {att.destruction}
+                                    </span>
+                                    <Percent size={10} className="flex-shrink-0" />
+                                  </div>
+                                  <div
+                                    className={`flex items-center gap-1 ${att.stars == 3 ? "bg-primary/10" : att.stars == 2 ? "bg-amber-600/10" : "bg-destructive/10"} px-1.5 py-0.5 rounded-full ${att.stars == 3 ? "text-primary" : att.stars == 2 ? "text-amber-600" : "text-destructive"}`}
+                                  >
+                                    <span className="text-xs font-bold whitespace-nowrap">
+                                      {att.stars}
+                                    </span>
+                                    <Star size={10} className="fill-current flex-shrink-0" />
+                                  </div>
                                 </div>
                               </div>
+                              <div className="flex flex-col gap-1 min-w-0">
+                                <div className="font-bold text-xs sm:text-sm truncate">
+                                  {att.opponent}
+                                </div>
+                                <span className="text-[10px] sm:text-xs text-muted-foreground font-normal">
+                                  {new Date(parseISO(att.date)).toLocaleDateString("pt-BR")}
+                                </span>
+                              </div>
                             </div>
-                            <div className="font-bold text-sm truncate flex flex-row justify-between">
-                              <span>{att.opponent}</span>
-                              <span className="text-sm text-muted-foreground font-normal">
-                                {new Date(
-                                  parseISO(att.date),
-                                ).toLocaleDateString("pt-BR")}
-                              </span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                )}
+                          ))}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })()}
               </React.Fragment>
             ))}
           </TableBody>
@@ -418,3 +437,4 @@ export function DataTable({ columns, data }: DataTableProps) {
     </div>
   );
 }
+

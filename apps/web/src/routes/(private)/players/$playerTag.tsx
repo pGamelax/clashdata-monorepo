@@ -1,5 +1,5 @@
-import { apiFetch, ApiError } from "@/lib/api";
-import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
+import { ApiError } from "@/api";
+import { useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import {
   Flame,
@@ -8,44 +8,16 @@ import {
   Trophy,
   BarChart3,
 } from "lucide-react";
-import type { PlayerInfo, PlayerLabel } from "./-types";
+import type { PlayerLabel } from "./-types";
+import type { PlayerInfo } from "@/api";
 import { WarHistorySection } from "./-data-table";
 import { PushLogsTable } from "./-push-logs-table";
 import { useEffect } from "react";
-
-const playerInfoQueryOptions = (playerTag: string) =>
-  queryOptions({
-    queryKey: ["player-info", playerTag],
-    queryFn: async () => {
-      const cleanTag = playerTag.replace(/#|%23/g, "").trim();
-      const response = await apiFetch(
-        `${import.meta.env.VITE_API_URL}/players/info?playerTag=${cleanTag}`,
-      );
-      return response as PlayerInfo;
-    },
-  });
-
-const playerWarHistoryQueryOptions = (playerTag: string) =>
-  queryOptions({
-    queryKey: ["player-war-history", playerTag],
-    queryFn: async () => {
-      const cleanTag = playerTag.replace(/#|%23/g, "").trim();
-      return apiFetch(
-        `${import.meta.env.VITE_API_URL}/players/war-history?playerTag=${cleanTag}`,
-      );
-    },
-  });
-
-const playerPushLogsQueryOptions = (playerTag: string) =>
-  queryOptions({
-    queryKey: ["player-push-logs", playerTag],
-    queryFn: async () => {
-      const cleanTag = playerTag.replace(/#|%23/g, "").trim();
-      return apiFetch(
-        `${import.meta.env.VITE_API_URL}/legend-logs/player?playerTag=${cleanTag}`,
-      );
-    },
-  });
+import {
+  getPlayerInfoQueryOptions,
+  getPlayerWarHistoryQueryOptions,
+  getPlayerLogsQueryOptions,
+} from "@/api";
 
 export const Route = createFileRoute("/(private)/players/$playerTag")({
   validateSearch: (search: Record<string, unknown>) => {
@@ -56,12 +28,12 @@ export const Route = createFileRoute("/(private)/players/$playerTag")({
   loader: async ({ context: { queryClient }, params }) => {
     try {
       await Promise.all([
-        queryClient.ensureQueryData(playerInfoQueryOptions(params.playerTag)),
+        queryClient.ensureQueryData(getPlayerInfoQueryOptions(params.playerTag)),
         queryClient.ensureQueryData(
-          playerWarHistoryQueryOptions(params.playerTag),
+          getPlayerWarHistoryQueryOptions(params.playerTag),
         ),
         queryClient.ensureQueryData(
-          playerPushLogsQueryOptions(params.playerTag),
+          getPlayerLogsQueryOptions(params.playerTag),
         ),
       ]);
     } catch (error: unknown) {
@@ -128,15 +100,15 @@ export const Route = createFileRoute("/(private)/players/$playerTag")({
 function RouteComponent() {
   const { playerTag } = Route.useParams();
   const { data: playerInfo } = useSuspenseQuery(
-    playerInfoQueryOptions(playerTag),
+    getPlayerInfoQueryOptions(playerTag),
   );
 
   const { data: playerWarHistory } = useSuspenseQuery(
-    playerWarHistoryQueryOptions(playerTag),
+    getPlayerWarHistoryQueryOptions(playerTag),
   );
 
   const { data: playerPushLogs } = useSuspenseQuery(
-    playerPushLogsQueryOptions(playerTag),
+    getPlayerLogsQueryOptions(playerTag),
   );
 
 

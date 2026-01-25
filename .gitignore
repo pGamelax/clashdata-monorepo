@@ -1,51 +1,60 @@
-# dependencies (bun install)
-node_modules
+# Dependencies
+node_modules/
+bun.lockb
+.pnp
+.pnp.js
 
-# output
-out
-dist
-*.tgz
+# Testing
+coverage/
+*.log
 
-# code coverage
-coverage
-*.lcov
+# Production
+dist/
+build/
+*.local
 
-# logs
-logs
-_.log
-report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
-
-# dotenv environment variable files
+# Environment variables
 .env
+.env.local
 .env.development.local
 .env.test.local
 .env.production.local
-.env.local
 
-# caches
-.eslintcache
-.cache
-*.tsbuildinfo
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
 
-# IntelliJ based IDEs
-.idea
-
-# Finder (MacOS) folder config
+# OS
 .DS_Store
+Thumbs.db
 
-# Dependências
-node_modules/
-.bun-build/
+# Database data (local development - NÃO COMMITAR)
+apps/api/data/
+*.db
+*.sqlite
+*.sqlite3
+
+# Prisma generated
+apps/api/src/generated/
 
 # Build outputs
-dist/
-.output/
+*.tsbuildinfo
+.next/
+out/
 
-# Variáveis de ambiente
-.env
-.env.local
+# Vite
+.vite/
 
-# Logs e arquivos do sistema
-*.log
-.DS_Store
-.vscode/
+# TypeScript
+*.tsbuildinfo
+
+# Misc
+.cache/
+.temp/
+.tmp/
+
+# Bun
+.bun-build/

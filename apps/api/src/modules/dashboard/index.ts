@@ -15,12 +15,13 @@ export const dashboard = new Elysia({ prefix: "/dashboard" })
   .get(
     "/data",
     async ({ query, user }) => {
-      const { clanTag } = query;
+      const { clanTag, limit } = query;
       const normalizedTag = normalizeTag(clanTag);
 
       const dashboard = await dashboardService.getDashboardFromAPI({
         clanTag: normalizedTag,
         userId: user.id,
+        limit: limit ? Number(limit) : undefined,
       });
 
       return dashboard;
@@ -31,7 +32,7 @@ export const dashboard = new Elysia({ prefix: "/dashboard" })
         summary: "Obter dados do dashboard de guerra",
         description:
           "Retorna dados agregados de guerra de todos os jogadores de um clan cadastrado. " +
-          "Inclui histórico de ataques e defesas das últimas 50 guerras. " +
+          "Inclui histórico de ataques e defesas das últimas 50 guerras normais e todas as guerras CWL. " +
           "Apenas o dono do clan pode acessar essas informações.",
         tags: ["Dashboard"],
         examples: [

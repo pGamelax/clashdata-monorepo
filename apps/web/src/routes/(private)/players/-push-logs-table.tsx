@@ -21,43 +21,8 @@ import { Input } from "@/components/ui/input";
 import { Search, ChevronDown, ChevronUp } from "lucide-react";
 import { parseISO, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import type { LegendLog } from "../push/-types";
-
-// Função para obter a chave de data considerando horário de São Paulo
-// O dia termina às 2:00 da manhã (horário de São Paulo)
-function getDateKeyForSaoPaulo(timestamp: string): string {
-  const date = parseISO(timestamp);
-  
-  // Converter para horário de São Paulo usando Intl.DateTimeFormat
-  const formatter = new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/Sao_Paulo",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    hour12: false,
-  });
-  
-  const parts = formatter.formatToParts(date);
-  const year = parts.find(p => p.type === "year")?.value || "";
-  const month = parts.find(p => p.type === "month")?.value || "";
-  const day = parts.find(p => p.type === "day")?.value || "";
-  const hour = parseInt(parts.find(p => p.type === "hour")?.value || "0", 10);
-  
-  // Se a hora for antes das 2:00, considerar como parte do dia anterior
-  let dateKey = `${year}-${month}-${day}`;
-  if (hour < 2) {
-    // Subtrair um dia da data
-    const dateObj = new Date(`${year}-${month}-${day}T00:00:00`);
-    dateObj.setDate(dateObj.getDate() - 1);
-    const prevYear = dateObj.getFullYear();
-    const prevMonth = String(dateObj.getMonth() + 1).padStart(2, "0");
-    const prevDay = String(dateObj.getDate()).padStart(2, "0");
-    dateKey = `${prevYear}-${prevMonth}-${prevDay}`;
-  }
-  
-  return dateKey;
-}
+import { getDateKeyForSaoPaulo } from "@/lib/date-utils";
+import type { LegendLog } from "@/api";
 
 interface PushLogsResponse {
   logs: LegendLog[];
@@ -66,7 +31,7 @@ interface PushLogsResponse {
   offset: number;
 }
 
-interface DayLog {
+export interface DayLog {
   date: string;
   gain: number;
   gainCount: number;
@@ -141,7 +106,7 @@ const columns: ColumnDef<DayLog>[] = [
   },
 ];
 
-interface PushLogsTableProps {
+export interface PushLogsTableProps {
   data: PushLogsResponse;
 }
 
@@ -152,6 +117,9 @@ export function PushLogsTable({ data }: PushLogsTableProps) {
   // Agrupar logs por data (considerando horário de São Paulo, dia termina às 2:00)
   const logsByDate = useMemo(() => {
     const dateMap = new Map<string, DayLog>();
+    
+    // Debug: verificar quantos logs estão chegando
+    console.log('Total de logs recebidos:', data.logs.length);
     
     data.logs.forEach((log) => {
       const dateKey = getDateKeyForSaoPaulo(log.timestamp);
@@ -192,6 +160,10 @@ export function PushLogsTable({ data }: PushLogsTableProps) {
       }
     });
     
+    // Debug: verificar quantos dias foram criados
+    console.log('Total de dias agrupados:', dateMap.size);
+    console.log('Datas:', Array.from(dateMap.keys()).sort((a, b) => b.localeCompare(a)));
+    
     // Calcular o final (troféus após o último log do dia) para cada dia
     dateMap.forEach((dayLog) => {
       if (dayLog.logs.length > 0) {
@@ -208,6 +180,7 @@ export function PushLogsTable({ data }: PushLogsTableProps) {
     const sortedDates = Array.from(dateMap.values()).sort((a, b) => 
       b.date.localeCompare(a.date)
     );
+  
     
     return sortedDates;
   }, [data.logs]);
@@ -232,7 +205,7 @@ export function PushLogsTable({ data }: PushLogsTableProps) {
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     initialState: {
-      pagination: { pageSize: 10 },
+      pagination: { pageSize: 100 }, // Aumentado para mostrar mais dias por página
     },
   });
 

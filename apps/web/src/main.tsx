@@ -8,7 +8,6 @@ import * as TanStackQueryProvider from "./integrations/tanstack-query/root-provi
 import { routeTree } from "./routeTree.gen";
 
 import "./styles.css";
-import "./lib/theme-init.ts"; // Initialize theme colors early
 import reportWebVitals from "./reportWebVitals.ts";
 import { ThemeProvider } from "./provider/theme-provider.tsx";
 

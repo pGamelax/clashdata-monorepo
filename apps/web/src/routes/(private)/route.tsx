@@ -1,25 +1,15 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
-import { queryOptions, useQuery } from "@tanstack/react-query";
-import { apiFetch, ApiError } from "@/lib/api";
+import { useQuery } from "@tanstack/react-query";
+import { ApiError, getSessionQueryOptions, getClansQueryOptions } from "@/api";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/footer";
-
-const authQueryOptions = queryOptions({
-  queryKey: ["session"],
-  queryFn: () => apiFetch(`${import.meta.env.VITE_API_URL}/auth/get-session`),
-});
-
-const clansQueryOptions = queryOptions({
-  queryKey: ["my-clans"],
-  queryFn: () => apiFetch(`${import.meta.env.VITE_API_URL}/clans/get-clans`),
-});
 
 export const Route = createFileRoute("/(private)")({
   loader: async ({ context: { queryClient } }) => {
     try {
       await Promise.all([
-        queryClient.ensureQueryData(authQueryOptions),
-        queryClient.ensureQueryData(clansQueryOptions),
+        queryClient.ensureQueryData(getSessionQueryOptions),
+        queryClient.ensureQueryData(getClansQueryOptions),
       ]);
     } catch (error: unknown) {
       if (error instanceof ApiError) {
@@ -31,7 +21,7 @@ export const Route = createFileRoute("/(private)")({
               error: "Sua sessão expirou. Faça login novamente.",
             },
           });
-      }
+        }
       }
       // Re-lança o erro se não for um ApiError 401
       throw error;
@@ -41,8 +31,8 @@ export const Route = createFileRoute("/(private)")({
 });
 
 function RouteComponent() {
-  const { data: user } = useQuery(authQueryOptions);
-  const { data: clans } = useQuery(clansQueryOptions);
+  const { data: user } = useQuery(getSessionQueryOptions);
+  const { data: clans } = useQuery(getClansQueryOptions);
 
   return (
     <div className="min-h-screen flex flex-col bg-background">

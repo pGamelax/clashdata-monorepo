@@ -5,6 +5,7 @@ const envSchema = z.object({
   BETTER_AUTH_SECRET: z.string(),
   BETTER_AUTH_URL: z.string(),
   TOKEN_COC: z.string(),
+  CLASHPERK_TOKEN: z.string().optional(), // Token opcional para API do ClashPerk
   BETTER_AUTH_TRUSTED_ORIGIN: z
     .string()
     .transform((str) => str.split(","))

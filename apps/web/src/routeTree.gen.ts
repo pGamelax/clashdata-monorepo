@@ -87,11 +87,11 @@ export interface FileRoutesByFullPath {
   '/players/$playerTag': typeof privatePlayersPlayerTagRoute
   '/push/$clanTag': typeof privatePushClanTagRoute
   '/wars/$clanTag': typeof privateWarsClanTagRoute
-  '/admin': typeof privateAdminIndexRoute
-  '/clans': typeof privateClansIndexRoute
+  '/admin/': typeof privateAdminIndexRoute
+  '/clans/': typeof privateClansIndexRoute
   '/players/': typeof privatePlayersIndexRoute
-  '/sign-in': typeof publicSignInIndexRoute
-  '/sign-up': typeof publicSignUpIndexRoute
+  '/sign-in/': typeof publicSignInIndexRoute
+  '/sign-up/': typeof publicSignUpIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof homeIndexRoute
@@ -127,11 +127,11 @@ export interface FileRouteTypes {
     | '/players/$playerTag'
     | '/push/$clanTag'
     | '/wars/$clanTag'
-    | '/admin'
-    | '/clans'
+    | '/admin/'
+    | '/clans/'
     | '/players/'
-    | '/sign-in'
-    | '/sign-up'
+    | '/sign-in/'
+    | '/sign-up/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -199,14 +199,14 @@ declare module '@tanstack/react-router' {
     '/(public)/sign-up/': {
       id: '/(public)/sign-up/'
       path: '/sign-up'
-      fullPath: '/sign-up'
+      fullPath: '/sign-up/'
       preLoaderRoute: typeof publicSignUpIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/(public)/sign-in/': {
       id: '/(public)/sign-in/'
       path: '/sign-in'
-      fullPath: '/sign-in'
+      fullPath: '/sign-in/'
       preLoaderRoute: typeof publicSignInIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
@@ -220,14 +220,14 @@ declare module '@tanstack/react-router' {
     '/(private)/clans/': {
       id: '/(private)/clans/'
       path: '/clans'
-      fullPath: '/clans'
+      fullPath: '/clans/'
       preLoaderRoute: typeof privateClansIndexRouteImport
       parentRoute: typeof privateRouteRoute
     }
     '/(private)/admin/': {
       id: '/(private)/admin/'
       path: '/admin'
-      fullPath: '/admin'
+      fullPath: '/admin/'
       preLoaderRoute: typeof privateAdminIndexRouteImport
       parentRoute: typeof privateRouteRoute
     }

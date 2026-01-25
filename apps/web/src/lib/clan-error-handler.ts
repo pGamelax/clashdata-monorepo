@@ -1,4 +1,4 @@
-import { ApiError } from "./api";
+import { ApiError } from "@/api";
 import { redirect } from "@tanstack/react-router";
 
 /**

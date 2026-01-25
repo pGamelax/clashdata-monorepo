@@ -1,5 +1,6 @@
 import type { ColumnDef } from "@tanstack/react-table";
 import { Link } from "@tanstack/react-router";
+import { Plus, Minus } from "lucide-react";
 
 export interface PlayerDayLog {
   playerTag: string;
@@ -11,8 +12,6 @@ export interface PlayerDayLog {
   final: number;
   logs: Array<{
     id: number;
-    playerTag: string;
-    playerName: string;
     type: "ATTACK" | "DEFENSE";
     diff: number;
     trophiesResult: number;
@@ -21,15 +20,14 @@ export interface PlayerDayLog {
 }
 
 // Função para formatar número com superscript
-const formatWithSuperscript = (type: string, value: number, count: number): string => {
-  const sign = type === "GAIN" ? "+" : "-";
+const formatWithSuperscript = ( value: number, count: number): string => {
   const superscript = count.toString();
   const superscriptMap: Record<string, string> = {
     "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴", 
     "5": "⁵", "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹"
   };
   const superscriptStr = superscript.split("").map(d => superscriptMap[d] || d).join("");
-  return `${sign}${Math.abs(value)}${superscriptStr}`;
+  return `${Math.abs(value)}${superscriptStr}`;
 };
 
 export const columns: ColumnDef<PlayerDayLog>[] = [
@@ -57,9 +55,10 @@ export const columns: ColumnDef<PlayerDayLog>[] = [
       const gain = row.original.gain;
       const count = row.original.gainCount;
       return (
-        <span className="font-semibold text-green-500">
-          {formatWithSuperscript("GAIN", gain, count)}
-        </span>
+        <div className="flex items-center gap-1 font-semibold text-green-500">
+          <Plus className="w-3 h-3" />
+          <span>{formatWithSuperscript( gain, count)}</span>
+        </div>
       );
     },
   },
@@ -70,9 +69,10 @@ export const columns: ColumnDef<PlayerDayLog>[] = [
       const loss = row.original.loss;
       const count = row.original.lossCount;
       return (
-        <span className="font-semibold text-red-500">
-          {formatWithSuperscript("LOSS", loss, count)}
-        </span>
+        <div className="flex items-center gap-1 font-semibold text-red-500">
+          <Minus className="w-3 h-3" />
+          <span>{formatWithSuperscript( loss, count)}</span>
+        </div>
       );
     },
   },

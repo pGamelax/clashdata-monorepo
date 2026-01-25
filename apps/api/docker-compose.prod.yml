@@ -18,6 +18,8 @@ services:
       - BETTER_AUTH_TRUSTED_DOMAIN=${BETTER_AUTH_TRUSTED_DOMAIN}
       - REDIS_HOST=${REDIS_HOST:-redis}
       - REDIS_PORT=${REDIS_PORT:-6379}
+      - CLASHPERK_TOKEN=${CLASHPERK_TOKEN:-}
+      - NODE_ENV=production
     depends_on:
       - postgres
       - redis

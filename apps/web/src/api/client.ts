@@ -1,3 +1,10 @@
+/**
+ * Cliente API centralizado
+ * Gerencia todas as requisições HTTP com tratamento de erros padronizado
+ */
+
+import { endpoints } from "./endpoints";
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -9,10 +16,13 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Função base para fazer requisições à API
+ */
 export const apiFetch = async (
   endpoint: string,
   options?: RequestInit,
-) => {
+): Promise<unknown> => {
   const res = await fetch(endpoint, {
     credentials: "include",
     ...options,
@@ -63,7 +73,17 @@ export const apiFetch = async (
       endpoint,
     );
   }
-  const resp = await res.json()
 
+  const resp = await res.json();
   return resp;
 };
+
+/**
+ * Helper para normalizar tags (remove # e espaços)
+ */
+export const normalizeTag = (tag: string): string => {
+  return tag.replace(/#|%23/g, "").trim();
+};
+
+export { endpoints };
+
