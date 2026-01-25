@@ -7,7 +7,7 @@ WORKDIR /app
 COPY apps/web/package.json apps/web/bun.lock ./
 
 # Instalar dependências
-RUN bun install --frozen-lockfile
+RUN bun install
 
 # Copiar código fonte da web
 COPY apps/web/ ./
