@@ -23,7 +23,7 @@ export const Route = createFileRoute("/(private)/clans/")({
 
 function RouteComponent() {
   const { data: clans } = useQuery(getClansQueryOptions);
-  const isEmpty = clans.length === 0;
+  const isEmpty = !clans || clans.length === 0;
   const router = useRouter();
   const navigate = useNavigate();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -91,7 +91,7 @@ function RouteComponent() {
         ) : (
           /* Clans Grid */
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-            {clans.map((clan: any) => (
+            {clans?.map((clan: any) => (
               <div
                 key={clan.tag}
                 onClick={() => handleSetActiveClan(clan.tag)}

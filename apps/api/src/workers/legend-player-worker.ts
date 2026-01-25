@@ -160,7 +160,11 @@ export const LegendPlayerWorker = new Worker(
   },
   {
     connection: redisConnection,
-    concurrency: 30, // Processa 30 jogadores em paralelo (ajuste conforme necessário)
+    concurrency: 30, // Processa 30 jogadores em paralelo
+    limiter: {
+      max: 10, // Máximo de 10 jobs processados
+      duration: 1000, // por segundo (10 req/s)
+    },
   }
 );
 

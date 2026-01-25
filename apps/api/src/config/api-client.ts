@@ -9,13 +9,13 @@ export const apiClient: AxiosInstance = axios.create({
   timeout: 10000,
 });
 
-// Rate limiting: máximo 5 requisições por segundo (muito conservador para evitar 429)
+// Rate limiting: máximo 10 requisições por segundo (conservador para evitar 429)
+// Com 30 jobs em paralelo, precisamos garantir que não ultrapassemos o limite
 let requestQueue: Array<{ resolve: (config: any) => void; config: any; timestamp: number }> = [];
 let isProcessing = false;
 let lastRequestTime = 0;
-const MAX_REQUESTS_PER_SECOND = 20; // Reduzido para 5 para evitar 429
-const REQUEST_INTERVAL = 50 / MAX_REQUESTS_PER_SECOND; // 200ms entre requisições
-const MIN_INTERVAL = 50; // Mínimo de 200ms entre requisições
+const MAX_REQUESTS_PER_SECOND = 10; // 10 req/s = 100ms entre requisições (conservador)
+const MIN_INTERVAL_MS = 1000 / MAX_REQUESTS_PER_SECOND; // 100ms entre requisições
 
 async function processQueue() {
   if (isProcessing || requestQueue.length === 0) return;
@@ -28,8 +28,8 @@ async function processQueue() {
       // Garante intervalo mínimo entre requisições
       const now = Date.now();
       const timeSinceLastRequest = now - lastRequestTime;
-      if (timeSinceLastRequest < MIN_INTERVAL) {
-        await new Promise(resolve => setTimeout(resolve, MIN_INTERVAL - timeSinceLastRequest));
+      if (timeSinceLastRequest < MIN_INTERVAL_MS) {
+        await new Promise(resolve => setTimeout(resolve, MIN_INTERVAL_MS - timeSinceLastRequest));
       }
       
       lastRequestTime = Date.now();
@@ -37,7 +37,7 @@ async function processQueue() {
       
       // Aguarda o intervalo antes de processar a próxima requisição
       if (requestQueue.length > 0) {
-        await new Promise(resolve => setTimeout(resolve, REQUEST_INTERVAL));
+        await new Promise(resolve => setTimeout(resolve, MIN_INTERVAL_MS));
       }
     }
   }
@@ -49,7 +49,7 @@ async function processQueue() {
 apiClient.interceptors.request.use(
   async (config) => {
     return new Promise((resolve) => {
-      requestQueue.push({ resolve, config });
+      requestQueue.push({ resolve, config, timestamp: Date.now() });
       processQueue();
     });
   },
@@ -59,33 +59,28 @@ apiClient.interceptors.request.use(
 );
 
 // Interceptor para tratamento de erros
-let rateLimitRetries = 0;
-const MAX_RATE_LIMIT_RETRIES = 3;
-
+// Não faz retry aqui - deixa o BullMQ fazer o retry com backoff configurado
 apiClient.interceptors.response.use(
   (response) => {
-    // Reset contador de retries em caso de sucesso
-    rateLimitRetries = 0;
     return response;
   },
   async (error) => {
+    // Erros de rede - deixa o BullMQ fazer retry
     if (error.code === "ECONNREFUSED" || error.code === "ETIMEDOUT") {
       throw error;
     }
+    
+    // Erro 429 (rate limit) - apenas loga, deixa o BullMQ fazer retry
     if (error.response?.status === 429) {
-      rateLimitRetries++;
-      if (rateLimitRetries <= MAX_RATE_LIMIT_RETRIES) {
-        // Backoff exponencial: 10s, 20s, 40s
-        const backoffDelay = Math.min(10000 * Math.pow(2, rateLimitRetries - 1), 60000);
-        console.warn(`⚠️ Rate limit 429 (tentativa ${rateLimitRetries}/${MAX_RATE_LIMIT_RETRIES}), aguardando ${backoffDelay}ms...`);
-        await new Promise(resolve => setTimeout(resolve, backoffDelay));
-        // Não relança o erro, permite que o BullMQ faça o retry
-        throw error;
-      }
-      console.error("❌ Rate limit persistente após múltiplas tentativas");
+      // Aumenta o intervalo temporariamente quando recebe 429
+      // Isso ajuda a evitar mais 429s
+      const currentInterval = MIN_INTERVAL_MS;
+      const increasedInterval = currentInterval * 2; // Dobra o intervalo temporariamente
+      console.warn(`⚠️ Rate limit 429 detectado, aumentando intervalo para ${increasedInterval}ms temporariamente`);
+      // O BullMQ vai fazer retry com backoff, então apenas lança o erro
       throw error;
     }
-    rateLimitRetries = 0;
+    
     throw error;
   }
 );

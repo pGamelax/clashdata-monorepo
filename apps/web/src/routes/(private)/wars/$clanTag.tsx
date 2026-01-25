@@ -4,6 +4,7 @@ import { ChartSpline, Sword, Swords, TrendingUp, Trophy, Shield, Loader2 } from 
 import { columns } from "./-columns";
 import { cwlColumns } from "./-cwl-columns";
 import { DataTable } from "./-data-table";
+import { CWLSelector } from "./-cwl-selector";
 import { useEffect, useMemo } from "react";
 import { WarsLoading } from "./-loading";
 import { handleClanErrorWithRedirect } from "@/lib/clan-error-handler";
@@ -11,6 +12,7 @@ import {
   getClanInfoQueryOptions,
   getDashboardDataQueryOptions,
   getDashboardDataQuickQueryOptions,
+  getClanRankingQueryOptions,
 } from "@/api";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -25,6 +27,11 @@ export const Route = createFileRoute("/(private)/wars/$clanTag")({
       // Carrega apenas os dados rápidos inicialmente
       await queryClient.ensureQueryData(getClanInfoQueryOptions(params.clanTag));
       await queryClient.ensureQueryData(getDashboardDataQuickQueryOptions(params.clanTag));
+      
+      // Prefetch do ranking para obter membros atuais (não bloqueia)
+      queryClient.prefetchQuery(getClanRankingQueryOptions(params.clanTag)).catch(() => {
+        // Ignora erros
+      });
       
       // Inicia busca completa em background (não bloqueia)
       queryClient.prefetchQuery(getDashboardDataQueryOptions(params.clanTag)).catch(() => {
@@ -54,6 +61,9 @@ function RouteComponent() {
     placeholderData: quickData,
   });
 
+  // Ranking do clã para obter membros atuais
+  const { data: clanRanking } = useQuery(getClanRankingQueryOptions(clanTag));
+
   // Usa dados completos se disponíveis, senão usa os rápidos
   const clanWars = useMemo(() => {
     const data = fullData || quickData || { players: [], cwlPlayers: [] };
@@ -69,6 +79,11 @@ function RouteComponent() {
       })),
     };
   }, [fullData, quickData]);
+
+  // Lista de tags dos membros atuais do clã
+  const currentClanMemberTags = useMemo(() => {
+    return clanRanking?.players?.map((p) => p.playerTag) || [];
+  }, [clanRanking]);
 
   const stats = [
     {
@@ -164,7 +179,7 @@ function RouteComponent() {
           </div>
 
           <Tabs defaultValue="normal" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-4">
+            <TabsList className="grid w-full grid-cols-3 mb-4">
               <TabsTrigger value="normal" className="flex items-center gap-2">
                 <ChartSpline className="w-4 h-4" />
                 <span className="hidden sm:inline">Guerras Normais</span>
@@ -174,6 +189,11 @@ function RouteComponent() {
                 <Shield className="w-4 h-4" />
                 <span className="hidden sm:inline">Liga de Clãs (CWL)</span>
                 <span className="sm:hidden">CWL</span>
+              </TabsTrigger>
+              <TabsTrigger value="cwl-selector" className="flex items-center gap-2">
+                <Trophy className="w-4 h-4" />
+                <span className="hidden sm:inline">Seleção CWL</span>
+                <span className="sm:hidden">Seleção</span>
               </TabsTrigger>
             </TabsList>
 
@@ -204,6 +224,20 @@ function RouteComponent() {
                     </p>
                   </div>
                 )}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="cwl-selector" className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Selecione os 15 melhores jogadores para participar da Liga de Clãs (CWL) baseado nas últimas 50 guerras normais. 
+                Os jogadores que estão no clã atualmente aparecem destacados em verde.
+              </p>
+              <div className="bg-card border border-border rounded-xl p-4 sm:p-5 lg:p-6">
+                <CWLSelector
+                  players={clanWars.players as any}
+                  currentClanMembers={currentClanMemberTags}
+                  clanName={clanStats.name}
+                />
               </div>
             </TabsContent>
           </Tabs>

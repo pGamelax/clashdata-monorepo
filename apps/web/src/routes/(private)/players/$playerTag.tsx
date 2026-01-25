@@ -1,4 +1,4 @@
-import { ApiError } from "@/api";
+import { ApiError, type WarHistory } from "@/api";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import {
@@ -8,11 +8,10 @@ import {
   Trophy,
   BarChart3,
 } from "lucide-react";
-import type { PlayerLabel } from "./-types";
-import type { PlayerInfo } from "@/api";
+import type { PlayerLabel, RawData, RawWarItem } from "./-types";
 import { WarHistorySection } from "./-data-table";
 import { PushLogsTable } from "./-push-logs-table";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import {
   getPlayerInfoQueryOptions,
   getPlayerWarHistoryQueryOptions,
@@ -110,6 +109,47 @@ function RouteComponent() {
   const { data: playerPushLogs } = useSuspenseQuery(
     getPlayerLogsQueryOptions(playerTag),
   );
+
+  // Converter WarHistory para RawData
+  const warHistoryRawData: RawData = useMemo(() => {
+    if (!playerWarHistory || !playerWarHistory.items) {
+      return { items: [] };
+    }
+
+    const convertedItems: RawWarItem[] = playerWarHistory.items
+      .filter((item) => item.war_data) // Filtra itens sem war_data
+      .map((item) => {
+        const warData = item.war_data!;
+        // Extrai campos do war_data que podem estar em diferentes formatos
+        const endTime = (warData.endTime as string) || (warData.end_time as string) || "";
+        const type = (warData.type as string) || "random";
+        const clan = warData.clan as { name?: string; tag?: string; stars?: number } | undefined;
+        const opponent = warData.opponent as { name?: string; tag?: string; stars?: number } | undefined;
+        
+        return {
+          war_data: {
+            endTime,
+            type,
+            clan: {
+              name: clan?.name || "",
+              tag: clan?.tag || "",
+              stars: clan?.stars || 0,
+            },
+            opponent: {
+              name: opponent?.name || "",
+              tag: opponent?.tag || "",
+              stars: opponent?.stars || 0,
+            },
+          },
+          attacks: item.attacks?.map((attack) => ({
+            stars: attack.stars,
+            destructionPercentage: attack.destructionPercentage,
+          })),
+        };
+      });
+
+    return { items: convertedItems };
+  }, [playerWarHistory]);
 
 
   const quickStats = [
@@ -241,7 +281,7 @@ function RouteComponent() {
             </h2>
             <div className="bg-card border border-border rounded-xl p-4 sm:p-5 lg:p-6">
               <WarHistorySection 
-                rawData={playerWarHistory} 
+                rawData={warHistoryRawData} 
                 playerClanTag={playerInfo.clan?.tag}
               />
             </div>
