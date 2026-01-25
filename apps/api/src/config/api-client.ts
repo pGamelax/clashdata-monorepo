@@ -6,7 +6,7 @@ export const apiClient: AxiosInstance = axios.create({
   headers: {
     Authorization: `Bearer ${env.TOKEN_COC}`,
   },
-  timeout: 10000,
+  timeout: 30000, // Aumentado para 30s para evitar timeouts prematuros
 });
 
 // Interceptor para tratamento de erros

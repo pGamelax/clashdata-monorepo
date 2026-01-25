@@ -26,10 +26,10 @@ async function masterJobExists(): Promise<boolean> {
         legendPlayerQueue.getDelayed(0, 100),
       ]);
 
-      const allJobs = [...waiting, ...active, ...delayed];
+      const allJobs = [...waiting, ...active, ...delayed].filter((job) => job != null);
       const existsInQueue = allJobs.some((job) => {
-        const jobId = job.id?.toString() || "";
-        const jobData = job.data as any;
+        const jobId = job?.id?.toString() || "";
+        const jobData = job?.data as any;
         return (
           jobId === "fan-out-master" ||
           jobData?.type === "fan-out-master"

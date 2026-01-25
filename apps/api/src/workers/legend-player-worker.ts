@@ -4,13 +4,21 @@ import { redisConnection } from "@/config/redis";
 import { Worker } from "bullmq";
 import { legendPlayerQueue } from "@/queue/legend-player-queue";
 
+const SNAPSHOT_CACHE_KEY_PREFIX = "cache:snapshot:";
+const CACHE_TTL = 86400; // 24 horas
+
 /**
  * Processa um jogador individual: busca dados, verifica troféus e cria logs
  */
 async function processPlayer(playerTag: string) {
-  const { data: player } = await apiClient.get(
-    `/players/${encodeURIComponent(playerTag)}`
-  );
+  // Timeout wrapper para garantir que o job não trave indefinidamente
+  const timeoutPromise = new Promise((_, reject) => {
+    setTimeout(() => reject(new Error("Job timeout após 45 segundos")), 45000);
+  });
+
+  const apiPromise = apiClient.get(`/players/${encodeURIComponent(playerTag)}`);
+
+  const { data: player } = await Promise.race([apiPromise, timeoutPromise]) as any;
 
   // Validação: garante que player.tag existe
   if (!player?.tag) {
@@ -27,51 +35,98 @@ async function processPlayer(playerTag: string) {
   // Garante que a tag está no formato correto (#TAG)
   const normalizedPlayerTag = player.tag.startsWith("#") ? player.tag : `#${player.tag}`;
 
-  const lastState = await prisma.playerSnapshot.findUnique({
-    where: { playerTag: normalizedPlayerTag },
-  });
+  // Lê o último estado do cache do Redis (evita conexão ao banco)
+  let lastState: { lastTrophies: number } | null = null;
+  try {
+    const cached = await redisConnection.get(`${SNAPSHOT_CACHE_KEY_PREFIX}${normalizedPlayerTag}`);
+    if (cached) {
+      lastState = JSON.parse(cached);
+    }
+  } catch (error) {
+    // Se falhar o cache, continua sem ele
+  }
+
+  // Se não tiver no cache, tenta ler do banco (fallback)
+  if (!lastState) {
+    try {
+      const dbState = await prisma.playerSnapshot.findUnique({
+        where: { playerTag: normalizedPlayerTag },
+        select: { lastTrophies: true },
+      });
+      if (dbState) {
+        lastState = dbState;
+      }
+    } catch (error) {
+      // Ignora erros de conexão, continua sem o estado anterior
+    }
+  }
 
   // Só cria logs se o jogador estiver na Legend League E houver mudança de troféus
   if (isInLegendLeague && lastState && currentTrophies !== lastState.lastTrophies) {
     const trophyDiff = currentTrophies - lastState.lastTrophies;
 
-    // Salva apenas um log com a diferença total de troféus
-    // Não divide por eventos - salva a diferença real
+    // Salva diretamente no banco
     if (trophyDiff !== 0) {
-      await prisma.legendLog.create({
-        data: {
-          playerTag: normalizedPlayerTag,
-          playerName: player.name,
-          clanTag: clanTag || null,
-          type: trophyDiff > 0 ? ("ATTACK" as const) : ("DEFENSE" as const),
-          diff: trophyDiff, // Diferença total, não dividida
-          trophiesResult: currentTrophies,
-        },
-      }).catch((err) => {
-        // Ignora erros de duplicata (unique constraint)
-        if (!err.message?.includes("Unique constraint") && !err.code?.includes("P2002")) {
-          throw err;
+      try {
+        await prisma.legendLog.create({
+          data: {
+            playerTag: normalizedPlayerTag,
+            playerName: player.name,
+            clanTag: clanTag || null,
+            type: trophyDiff > 0 ? ("ATTACK" as const) : ("DEFENSE" as const),
+            diff: trophyDiff,
+            trophiesResult: currentTrophies,
+          },
+        }).catch((err) => {
+          // Ignora erros de duplicata (unique constraint)
+          if (!err.message?.includes("Unique constraint") && !err.code?.includes("P2002")) {
+            throw err;
+          }
+        });
+      } catch (error: unknown) {
+        if (error instanceof Error) {
+          // Log apenas se não for erro de duplicata
+          const prismaError = error as any;
+          if (!error.message?.includes("Unique constraint") && !prismaError.code?.includes("P2002")) {
+            throw error;
+          }
         }
-      });
+      }
     }
   }
 
   // SEMPRE atualiza ou cria o snapshot do jogador (mesmo que não esteja na Legend League)
-  // Isso permite detectar quando jogadores entram ou saem da Legend League
-  await prisma.playerSnapshot.upsert({
-    where: { playerTag: normalizedPlayerTag },
-    update: {
-      lastTrophies: currentTrophies,
-      lastAttackWins: currentAttacks,
-      playerName: player.name,
-    },
-    create: {
-      playerTag: normalizedPlayerTag,
-      playerName: player.name,
-      lastTrophies: currentTrophies,
-      lastAttackWins: currentAttacks,
-    },
-  });
+  try {
+    await prisma.playerSnapshot.upsert({
+      where: { playerTag: normalizedPlayerTag },
+      update: {
+        lastTrophies: currentTrophies,
+        lastAttackWins: currentAttacks,
+        playerName: player.name,
+      },
+      create: {
+        playerTag: normalizedPlayerTag,
+        playerName: player.name,
+        lastTrophies: currentTrophies,
+        lastAttackWins: currentAttacks,
+      },
+    });
+
+    // Atualiza o cache do Redis após salvar no banco
+    try {
+      await redisConnection.set(
+        `${SNAPSHOT_CACHE_KEY_PREFIX}${normalizedPlayerTag}`,
+        JSON.stringify({ lastTrophies: currentTrophies }),
+        "EX",
+        CACHE_TTL
+      );
+    } catch (error) {
+      // Ignora erros de cache
+    }
+  } catch (error) {
+    // Se falhar, relança o erro
+    throw error;
+  }
 
   return {
     success: true,
@@ -121,7 +176,6 @@ export const LegendPlayerWorker = new Worker(
           totalPlayers: players.length,
         };
       } catch (error: any) {
-        console.error("Erro no job mestre (fan-out):", error.message);
         throw error;
       }
     }
@@ -131,26 +185,6 @@ export const LegendPlayerWorker = new Worker(
       try {
         return await processPlayer(job.data.playerTag);
       } catch (err: any) {
-        // Erros de rede - deixa o BullMQ fazer retry com backoff
-        if (err.code === "ECONNREFUSED" || err.code === "ETIMEDOUT") {
-          throw err;
-        }
-
-        // Erro 429 (rate limit) - deixa o BullMQ fazer retry com backoff exponencial
-        if (err.response?.status === 429 || err.message?.includes("429")) {
-          throw err; // BullMQ vai fazer retry com backoff configurado
-        }
-
-        // Erros do Prisma - log completo para debug
-        if (err.message?.includes("Invalid `prisma") || err.message?.includes("prisma.")) {
-          console.error(`❌ Erro Prisma na tag ${job.data.playerTag}:`, err.message);
-          throw err;
-        }
-
-        // Outros erros - log apenas se não for comum
-        if (!err.message?.includes("rate limit")) {
-          console.error(`Erro na tag ${job.data.playerTag}:`, err.message?.substring(0, 200));
-        }
         throw err;
       }
     }
@@ -160,35 +194,77 @@ export const LegendPlayerWorker = new Worker(
   },
   {
     connection: redisConnection,
-    concurrency: 30, // Processa 30 jogadores em paralelo
+    concurrency: 20, // Reduzido para 15 para evitar muitas conexões simultâneas
+    limiter: {
+      max: 20, // Máximo de 10 jobs processados
+      duration: 1000, // por segundo (10 req/s para API)
+    },
+
+    maxStalledCount: 3, 
+
   }
 );
 
 
 let completedCount = 0;
 let failedCount = 0;
+const recentErrors: Array<{ error: string; count: number }> = [];
+
+LegendPlayerWorker.on("completed", (job) => {
+  completedCount++;
+  const jobData = job?.data as any;
+  
+  // Log a cada 50, 100, 150 jobs completados
+  if (completedCount === 50 || completedCount === 100 || completedCount === 150 || completedCount % 50 === 0) {
+    const successRate = failedCount > 0 
+      ? ((completedCount / (completedCount + failedCount)) * 100).toFixed(1)
+      : "100.0";
+    console.log(`✅ ${completedCount} jobs completados | ❌ ${failedCount} falharam | 📊 ${successRate}% sucesso`);
+    
+    // Mostra erros recentes se houver
+    if (recentErrors.length > 0) {
+      console.log(`   Erros recentes:`);
+      recentErrors.forEach(({ error, count }) => {
+        console.log(`   - ${error} (${count}x)`);
+      });
+      recentErrors.length = 0; // Limpa após mostrar
+    }
+  }
+});
 
 LegendPlayerWorker.on("failed", (job, err) => {
   failedCount++;
   const errorMessage = err.message || "Erro desconhecido";
   const jobData = job?.data as any;
 
-  if (!errorMessage.includes("429") && !errorMessage.includes("rate limit")) {
-    if (jobData?.type === "fan-out-master") {
-      console.error(`❌ Job mestre (fan-out) falhou:`, errorMessage.substring(0, 200));
-    } else {
-      if (failedCount % 10 === 0 || !errorMessage.includes("404")) {
-        console.error(`❌ Job falhou para ${jobData?.playerTag}:`, errorMessage.substring(0, 100));
-      }
+  // Ignora rate limit nos logs
+  if (errorMessage.includes("429") || errorMessage.includes("rate limit")) {
+    return;
+  }
+
+  // Adiciona erro à lista de erros recentes
+  const errorSummary = errorMessage.substring(0, 100);
+  const existingError = recentErrors.find(e => e.error === errorSummary);
+  if (existingError) {
+    existingError.count++;
+  } else {
+    recentErrors.push({ error: errorSummary, count: 1 });
+  }
+
+  // Log a cada 50, 100, 150 jobs falhados
+  if (failedCount === 50 || failedCount === 100 || failedCount === 150 || failedCount % 50 === 0) {
+    const successRate = completedCount > 0 
+      ? ((completedCount / (completedCount + failedCount)) * 100).toFixed(1)
+      : "0.0";
+    console.log(`✅ ${completedCount} jobs completados | ❌ ${failedCount} falharam | 📊 ${successRate}% sucesso`);
+    
+    // Mostra erros recentes
+    if (recentErrors.length > 0) {
+      console.log(`   Erros recentes:`);
+      recentErrors.forEach(({ error, count }) => {
+        console.log(`   - ${error} (${count}x)`);
+      });
+      recentErrors.length = 0; // Limpa após mostrar
     }
   }
-
-  // Log resumo a cada 10 falhas
-  if (failedCount % 10 === 0) {
-    console.warn(`⚠️ Total de ${failedCount} jobs falharam`);
-  }
-});
-
-LegendPlayerWorker.on("error", (err) => {
-  console.error("❌ Erro crítico no Legend Player Worker:", err.message);
 });
