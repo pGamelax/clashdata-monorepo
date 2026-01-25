@@ -167,7 +167,6 @@ export const LegendPlayerWorker = new Worker(
 // Logs apenas para erros importantes (reduzir verbosidade)
 let completedCount = 0;
 let failedCount = 0;
-const LOG_INTERVAL = 50; // Log a cada 50 jobs completados
 
 LegendPlayerWorker.on("completed", (job) => {
   completedCount++;
