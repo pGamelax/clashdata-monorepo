@@ -171,8 +171,6 @@ let failedCount = 0;
 LegendPlayerWorker.on("completed", (job) => {
   completedCount++;
   const jobData = job.data as any;
-
-  // Log detalhado removido para produção
 });
 
 LegendPlayerWorker.on("failed", (job, err) => {
