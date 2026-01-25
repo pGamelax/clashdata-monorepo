@@ -18,7 +18,7 @@ import { legendLogs } from "./modules/legend-logs";
 import { admin } from "./modules/admin";
 
 //workers
-//import "./workers/legend-player-worker";
+import "./workers/legend-player-worker";
 import { startClanMembersScheduler } from "./workers/clan-members-scheduler";
 import { startPlayerSnapshotScheduler, initializePlayerSnapshotQueue } from "./workers/player-snapshot-scheduler";
 
@@ -96,3 +96,26 @@ const app = new Elysia()
   .use(push)
   .use(legendLogs)
   .listen({ hostname: "0.0.0.0", port: 3333 });
+
+  redisConnection.on("ready", async () => {
+  console.log("🚀 Iniciando schedulers de monitoramento de jogadores...");
+  
+  // Inicializa a queue com todos os jogadores do playerSnapshot
+  await initializePlayerSnapshotQueue();
+  
+  // Inicia o scheduler que busca jogadores dos clans a cada 5 minutos
+  startClanMembersScheduler();
+  
+  // Inicia o scheduler que monitora todos os jogadores do playerSnapshot a cada 2 minutos
+  startPlayerSnapshotScheduler();
+});
+
+// Se já estiver pronto, inicia imediatamente
+if (redisConnection.status === "ready") {
+  (async () => {
+    console.log("🚀 Iniciando schedulers de monitoramento de jogadores...");
+    await initializePlayerSnapshotQueue();
+    startClanMembersScheduler();
+    startPlayerSnapshotScheduler();
+  })();
+}
