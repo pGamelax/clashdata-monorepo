@@ -1,9 +1,7 @@
-import { Shield } from "lucide-react";
-
 interface ClanHeaderProps {
   clanName: string;
   clanTag: string;
-  description: string;
+  description?: string;
 }
 
 export function ClanHeader({ clanName, clanTag, description }: ClanHeaderProps) {
@@ -18,9 +16,11 @@ export function ClanHeader({ clanName, clanTag, description }: ClanHeaderProps) 
             #{clanTag.replace("%23", "")}
           </p>
         </div>
-        <p className="text-sm sm:text-base text-muted-foreground max-w-2xl line-clamp-2 sm:line-clamp-none">
-          {description}
-        </p>
+        {description && (
+          <p className="text-sm sm:text-base text-muted-foreground max-w-2xl line-clamp-2 sm:line-clamp-none">
+            {description}
+          </p>
+        )}
       </div>
     </header>
   );

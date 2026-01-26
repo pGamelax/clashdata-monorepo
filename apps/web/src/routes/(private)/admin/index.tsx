@@ -1,9 +1,9 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { useSuspenseQuery, useQuery } from "@tanstack/react-query";
 import { ApiError } from "@/api";
 import { useEffect, useState } from "react";
 import React from "react";
-import { Shield, Users, Plus, Search, Trash2, AlertCircle, Database, LayoutDashboard, BarChart3, Edit2, Eye, UserCog, Activity, TrendingUp, Link2 } from "lucide-react";
+import { Shield, Users, Plus, Search, Trash2, AlertCircle, Database, LayoutDashboard, BarChart3, Edit2, Eye, UserCog, Activity, TrendingUp, Link2, Calendar, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -41,6 +41,10 @@ import {
   addClanToUser,
   revokeClanAccess,
   apiFetch,
+  setSeasonEndDate,
+  fetchSeasonData,
+  getAllConfigsQueryOptions,
+  type SeasonConfig,
 } from "@/api";
 
 export const Route = createFileRoute("/(private)/admin/")({
@@ -126,6 +130,11 @@ function RouteComponent() {
   const [newClanTag, setNewClanTag] = useState("");
   const [newClanName, setNewClanName] = useState("");
   const [editClanName, setEditClanName] = useState("");
+  const [seasonEndDateInput, setSeasonEndDateInput] = useState("");
+  
+  const { data: seasonConfigs, refetch: refetchSeasonConfigs } = useQuery({
+    ...getAllConfigsQueryOptions,
+  });
 
   useEffect(() => {
     document.title = "Painel Admin | Clashdata";
@@ -418,6 +427,10 @@ function RouteComponent() {
               <TabsTrigger value="stats" className="flex-shrink-0">
                 <BarChart3 className="w-4 h-4 mr-2" />
                 <span className="hidden sm:inline">Estatísticas</span>
+              </TabsTrigger>
+              <TabsTrigger value="seasons" className="flex-shrink-0">
+                <Calendar className="w-4 h-4 mr-2" />
+                <span className="hidden sm:inline">Temporadas</span>
               </TabsTrigger>
             </TabsList>
           </div>
@@ -1301,6 +1314,129 @@ function RouteComponent() {
                           <span className="text-sm font-medium">{clan.userCount || 0} usuários</span>
                         </div>
                       )) || <p className="text-sm text-muted-foreground">Nenhum clã encontrado</p>}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* Seasons Tab */}
+          <TabsContent value="seasons" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Agendar Worker de Temporada</CardTitle>
+                  <CardDescription>
+                    Defina a data/hora para agendar o worker que buscará os dados de previousSeason de todos os jogadores dos clans cadastrados.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="seasonEndDate">Data/Hora de Execução</Label>
+                    <Input
+                      id="seasonEndDate"
+                      type="datetime-local"
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          const date = new Date(e.target.value);
+                          setSeasonEndDateInput(date.toISOString());
+                        }
+                      }}
+                    />
+                  </div>
+                  <Button
+                    onClick={async () => {
+                      if (!seasonEndDateInput) {
+                        showToast("error", "Selecione uma data/hora");
+                        return;
+                      }
+                      try {
+                        await setSeasonEndDate(seasonEndDateInput);
+                        showToast("success", "Worker agendado com sucesso");
+                        setSeasonEndDateInput("");
+                        refetchSeasonConfigs();
+                      } catch (error: unknown) {
+                        if (error instanceof ApiError) {
+                          showToast("error", error.message || "Erro ao agendar worker");
+                        } else {
+                          showToast("error", "Erro ao agendar worker");
+                        }
+                      }
+                    }}
+                    className="w-full"
+                  >
+                    <Calendar className="w-4 h-4 mr-2" />
+                    Agendar Worker
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Workers Agendados</CardTitle>
+                  <CardDescription>
+                    Lista de todos os workers agendados
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {seasonConfigs && seasonConfigs.length > 0 ? (
+                      seasonConfigs.map((config: SeasonConfig) => (
+                        <div
+                          key={config.id}
+                          className="flex items-center justify-between p-3 border rounded-lg"
+                        >
+                          <div className="flex flex-col">
+                            <span className="text-sm font-medium">
+                              {new Date(config.scheduledAt).toLocaleDateString("pt-BR", {
+                                day: "2-digit",
+                                month: "2-digit",
+                                year: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </span>
+                            {config.isProcessed ? (
+                              <span className="text-xs px-2 py-0.5 rounded bg-green-500/10 text-green-500 mt-1">
+                                Processado
+                              </span>
+                            ) : (
+                              <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-500 mt-1">
+                                Pendente
+                              </span>
+                            )}
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={async () => {
+                              try {
+                                const result = await fetchSeasonData(config.id);
+                                showToast(
+                                  "success",
+                                  `Dados salvos: ${result.totalPlayersSaved} jogadores`
+                                );
+                                refetchSeasonConfigs();
+                              } catch (error: unknown) {
+                                if (error instanceof ApiError) {
+                                  showToast("error", error.message || "Erro ao buscar dados");
+                                } else {
+                                  showToast("error", "Erro ao buscar dados");
+                                }
+                              }
+                            }}
+                            disabled={config.isProcessed}
+                          >
+                            <Trophy className="w-4 h-4 mr-2" />
+                            {config.isProcessed ? "Já Processado" : "Executar Agora"}
+                          </Button>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-muted-foreground text-center py-4">
+                        Nenhum worker agendado
+                      </p>
+                    )}
                   </div>
                 </CardContent>
               </Card>

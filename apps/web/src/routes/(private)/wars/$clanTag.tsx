@@ -9,7 +9,7 @@ import {
   getDashboardDataQuickQueryOptions,
   getClanRankingQueryOptions,
 } from "@/api";
-import { ClanHeader } from "./-clan-header";
+import { ClanHeader } from "../../../components/clan-header";
 import { ClanStats } from "./-clan-stats";
 import { PerformanceSection } from "./-performance-section";
 

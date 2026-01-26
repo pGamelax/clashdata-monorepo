@@ -32,28 +32,50 @@ import type { DateRange } from "react-day-picker";
 import { isWithinInterval, parseISO } from "date-fns";
 import { DatePickerWithRange } from "@/components/data-picker";
 import type { PlayerStats, WarAction, ProcessedPlayer } from "./-types";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 
 interface DataTableProps {
   columns: ColumnDef<ProcessedPlayer>[];
   data: PlayerStats[];
 }
 
+// Função para obter os 4 meses relativos ao mês atual
+function getLastFourMonths(): Array<{ month: number; year: number; name: string }> {
+  const now = new Date();
+  const months: Array<{ month: number; year: number; name: string }> = [];
+  const monthNames = [
+    "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+  ];
+
+  for (let i = 0; i < 4; i++) {
+    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push({
+      month: date.getMonth(),
+      year: date.getFullYear(),
+      name: monthNames[date.getMonth()]
+    });
+  }
+
+  return months;
+}
+
 export function DataTable({ columns, data }: DataTableProps) {
   const [globalFilter, setGlobalFilter] = useState("");
   const [date, setDate] = useState<DateRange | undefined>();
-  const [selectedSeasons, setSelectedSeasons] = useState<number>(4); // Últimas 4 temporadas por padrão
+  const availableMonths = useMemo(() => getLastFourMonths(), []);
+  const [selectedMonths, setSelectedMonths] = useState<Set<number>>(
+    new Set(availableMonths.map(m => m.month))
+  );
+  const [selectedYears, setSelectedYears] = useState<Map<number, number>>(
+    new Map(availableMonths.map(m => [m.month, m.year]))
+  );
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
 
   const { dynamicData } = useMemo(() => {
     const K = 8;
-    const GLOBAL_AVG = 2.0;
+    const GLOBAL_AVG = 2
 
     if (!Array.isArray(data)) return { dynamicData: [], warCount: 0 };
 
@@ -67,34 +89,30 @@ export function DataTable({ columns, data }: DataTableProps) {
       (a, b) => new Date(b).getTime() - new Date(a).getTime(),
     );
 
-    // Calcula data de X temporadas atrás (baseado no selectedSeasons)
-    // Se tem filtro de data customizado, não usa filtro de temporada
     let limitedDates: Set<string>;
-    let seasonsAgoDate: Date | null = null;
     
     if (date?.from && date?.to) {
-      // Se tem filtro de data customizado, usa todas as datas (o filtro será aplicado depois)
       limitedDates = new Set(sortedDates);
     } else {
-      // Usa o selectedSeasons (padrão é 4 temporadas)
-      const seasonsToUse = selectedSeasons > 0 ? selectedSeasons : 4;
-      seasonsAgoDate = new Date();
-      seasonsAgoDate.setMonth(seasonsAgoDate.getMonth() - seasonsToUse);
-      seasonsAgoDate.setHours(0, 0, 0, 0); // Normaliza para início do dia
-      
-      // Filtra datas pelas últimas X temporadas
-      const filteredDatesBySeason = sortedDates.filter((dateStr) => {
+      // Filtra por meses selecionados
+      const filteredDatesByMonth = sortedDates.filter((dateStr) => {
         try {
           const dateObj = parseISO(dateStr);
           if (isNaN(dateObj.getTime())) return false;
-          const dateObjNormalized = new Date(dateObj);
-          dateObjNormalized.setHours(0, 0, 0, 0);
-          return dateObjNormalized >= seasonsAgoDate!;
+          const month = dateObj.getMonth();
+          const year = dateObj.getFullYear();
+          
+          // Verifica se o mês está selecionado e se o ano corresponde
+          if (selectedMonths.has(month)) {
+            const expectedYear = selectedYears.get(month);
+            return expectedYear === year;
+          }
+          return false;
         } catch {
           return false;
         }
       });
-      limitedDates = new Set(filteredDatesBySeason);
+      limitedDates = new Set(filteredDatesByMonth);
     }
 
     const totalClanWarDates = new Set<string>();
@@ -120,15 +138,8 @@ export function DataTable({ columns, data }: DataTableProps) {
               });
             }
             
-            // Caso contrário, usa filtro de temporada
-            // Se temos uma data limite de temporada, compara diretamente
-            if (seasonsAgoDate) {
-              const actionDateNormalized = new Date(actionDate);
-              actionDateNormalized.setHours(0, 0, 0, 0);
-              return actionDateNormalized >= seasonsAgoDate;
-            }
-            
-            // Se não há data limite (filtro de data customizado), verifica se está no conjunto
+            // Caso contrário, usa filtro de meses selecionados
+            // Verifica se a data está no conjunto de datas filtradas
             return limitedDates.has(action.date);
           } catch {
             return false;
@@ -195,7 +206,7 @@ export function DataTable({ columns, data }: DataTableProps) {
       .sort((a, b) => b.performanceScore - a.performanceScore);
 
     return { dynamicData: processed, warCount: totalClanWarDates.size };
-  }, [data, date, selectedSeasons]);
+  }, [data, date, selectedMonths, selectedYears]);
 
   const table = useReactTable({
     data: dynamicData,
@@ -227,52 +238,72 @@ export function DataTable({ columns, data }: DataTableProps) {
               date={date} 
               setDate={(newDate) => {
                 setDate(newDate);
-                // Remove filtro de temporada quando usa filtro de data
+                // Remove filtro de meses quando usa filtro de data
                 if (newDate?.from && newDate?.to) {
-                  setSelectedSeasons(0);
+                  setSelectedMonths(new Set());
                 } else if (!newDate) {
-                  // Se removeu o filtro de data, volta para 4 temporadas
-                  setSelectedSeasons(4);
+                  // Se removeu o filtro de data, volta para todos os meses selecionados
+                  const months = getLastFourMonths();
+                  setSelectedMonths(new Set(months.map(m => m.month)));
+                  setSelectedYears(new Map(months.map(m => [m.month, m.year])));
                 }
               }} 
             />
           </div>
 
-          <div className="relative w-full md:w-64">
-            <History className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10 pointer-events-none" />
-            <Select
-              value={String(selectedSeasons)}
-              onValueChange={(value) => {
-                const seasons = Number(value);
-                setSelectedSeasons(seasons);
-                // Remove filtro de data quando usa filtro de temporada
-                if (seasons > 0) {
-                  setDate(undefined);
-                }
-              }}
-              disabled={!!date}
-            >
-              <SelectTrigger className="w-full h-11 pl-10 pr-3 rounded-xl border-2 border-border/50 bg-muted/30 backdrop-blur-sm focus:ring-2 focus:ring-primary focus:ring-offset-0 transition-all disabled:opacity-50">
-                <SelectValue placeholder="Temporada" />
-              </SelectTrigger>
-              <SelectContent className="rounded-xl border-2 border-border/50 bg-card/95 backdrop-blur-xl shadow-xl">
-                <SelectItem value="1">Última temporada</SelectItem>
-                <SelectItem value="2">Últimas 2 temporadas</SelectItem>
-                <SelectItem value="3">Últimas 3 temporadas</SelectItem>
-                <SelectItem value="4">Últimas 4 temporadas</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="relative w-full md:w-auto">
+            <div className="flex items-center gap-2 pl-10 pr-3 py-2.5 rounded-xl border-2 border-border/50 bg-muted/30 backdrop-blur-sm">
+              <History className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10 pointer-events-none" />
+              <div className="flex flex-wrap gap-3 items-center">
+                {availableMonths.map(({ month, year, name }) => (
+                  <div key={`${year}-${month}`} className="flex items-center gap-2">
+                    <Checkbox
+                      id={`month-${month}-${year}`}
+                      checked={selectedMonths.has(month) && selectedYears.get(month) === year}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setSelectedMonths(new Set([...selectedMonths, month]));
+                          setSelectedYears(new Map([...selectedYears, [month, year]]));
+                          // Remove filtro de data quando seleciona meses
+                          setDate(undefined);
+                        } else {
+                          // Impede desmarcar se for o último mês selecionado
+                          if (selectedMonths.size <= 1) {
+                            return;
+                          }
+                          const newSelected = new Set(selectedMonths);
+                          newSelected.delete(month);
+                          setSelectedMonths(newSelected);
+                          const newYears = new Map(selectedYears);
+                          newYears.delete(month);
+                          setSelectedYears(newYears);
+                        }
+                      }}
+                      disabled={!!date || (selectedMonths.size <= 1 && selectedMonths.has(month))}
+                    />
+                    <Label
+                      htmlFor={`month-${month}-${year}`}
+                      className="text-sm font-medium cursor-pointer select-none"
+                    >
+                      {name}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
 
           {/* Botão para limpar filtros */}
-          {(globalFilter || date || selectedSeasons !== 4) && (
+          {(globalFilter || date || selectedMonths.size !== availableMonths.length) && (
             <Button
               variant="outline"
               size="sm"
               onClick={() => {
                 setGlobalFilter("");
                 setDate(undefined);
-                setSelectedSeasons(4);
+                const months = getLastFourMonths();
+                setSelectedMonths(new Set(months.map(m => m.month)));
+                setSelectedYears(new Map(months.map(m => [m.month, m.year])));
               }}
               className="h-11 px-3 sm:px-4 rounded-xl border-2 border-border/50 bg-muted/30 backdrop-blur-sm hover:bg-muted/50 transition-all"
             >

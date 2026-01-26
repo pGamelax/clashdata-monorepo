@@ -142,3 +142,37 @@ model LegendLog {
   @@unique([playerTag, trophiesResult, timestamp])
   @@map("legend_logs")
 }
+
+model SeasonConfig {
+  id            String   @id @default(uuid())
+  scheduledAt   DateTime @map("scheduled_at") // Data/hora para agendar o worker
+  isProcessed   Boolean  @default(false) @map("is_processed") // Indica se o worker já foi executado
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  playerSeasons PlayerSeason[]
+
+  @@index([scheduledAt])
+  @@map("season_configs")
+}
+
+model PlayerSeason {
+  id            String   @id @default(uuid())
+  playerTag     String   @db.VarChar(20) @map("player_tag")
+  playerName    String   @db.VarChar(100) @map("player_name")
+  clanTag       String   @db.VarChar(20) @map("clan_tag") // Clan do jogador no momento do worker
+  seasonId      String   @map("season_id") // previousSeason.id (ex: "2025-12-29")
+  rank          Int?     // previousSeason.rank (rank global)
+  trophies      Int      // previousSeason.trophies
+  configId      String   @map("config_id") // ID da SeasonConfig que gerou este registro
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  config        SeasonConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+
+  @@index([clanTag, seasonId])
+  @@index([seasonId])
+  @@index([configId])
+  @@unique([playerTag, seasonId, configId]) // Um jogador pode ter o mesmo seasonId em diferentes configs
+  @@map("player_seasons")
+}

@@ -16,11 +16,13 @@ import { players } from "./modules/players";
 import { push } from "./modules/push";
 import { legendLogs } from "./modules/legend-logs";
 import { admin } from "./modules/admin";
+import { seasons } from "./modules/seasons";
 
 //workers
-import "./workers/legend-player-worker";
+//import "./workers/legend-player-worker";
 import { startClanMembersScheduler } from "./workers/clan-members-scheduler";
 import { startPlayerSnapshotScheduler, initializePlayerSnapshotQueue } from "./workers/player-snapshot-scheduler";
+import { initializeSeasonScheduler, seasonQueue } from "./workers/season-scheduler";
 
 //queues
 import { legendPlayerQueue } from "./queue/legend-player-queue";
@@ -36,7 +38,10 @@ import { env } from "./env";
 const serverAdapter = new ElysiaAdapter("/admin/queues");
 
 createBullBoard({
-  queues: [new BullMQAdapter(legendPlayerQueue)],
+  queues: [
+    new BullMQAdapter(legendPlayerQueue),
+    new BullMQAdapter(seasonQueue),
+  ],
   serverAdapter,
 });
 
@@ -95,8 +100,14 @@ const app = new Elysia()
   .use(players)
   .use(push)
   .use(legendLogs)
+  .use(seasons)
   .listen({ hostname: "0.0.0.0", port: 3333 });
 
+// Inicializa o scheduler de temporada ao iniciar o servidor
+initializeSeasonScheduler().catch((error) => {
+  console.error("Erro ao inicializar scheduler de temporada:", error);
+});
+/* 
   redisConnection.on("ready", async () => {
   console.log("🚀 Iniciando schedulers de monitoramento de jogadores...");
   
@@ -118,4 +129,4 @@ if (redisConnection.status === "ready") {
     startClanMembersScheduler();
     startPlayerSnapshotScheduler();
   })();
-}
+} */

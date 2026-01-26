@@ -54,5 +54,18 @@ export const endpoints = {
     addClanToUser: `${API_BASE_URL}/admin/add-clan-to-user`,
     revokeClanAccess: `${API_BASE_URL}/admin/revoke-clan-access`,
   },
+
+  // Seasons
+  seasons: {
+    getAllConfigs: `${API_BASE_URL}/seasons/all`,
+    setSeasonEndDate: `${API_BASE_URL}/seasons/set-season-end-date`,
+    getSeasonsByClan: (clanTag: string) =>
+      `${API_BASE_URL}/seasons/by-clan/${encodeURIComponent(clanTag)}`,
+    getLogsBySeason: (seasonId: string, clanTag: string) => {
+      const params = new URLSearchParams({ clanTag });
+      return `${API_BASE_URL}/seasons/${encodeURIComponent(seasonId)}/logs?${params.toString()}`;
+    },
+    fetchSeasonData: `${API_BASE_URL}/seasons/fetch-season-data`,
+  },
 } as const;
 
