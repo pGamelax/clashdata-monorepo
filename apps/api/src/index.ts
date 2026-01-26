@@ -19,7 +19,7 @@ import { admin } from "./modules/admin";
 import { seasons } from "./modules/seasons";
 
 //workers
-//import "./workers/legend-player-worker";
+import "./workers/legend-player-worker";
 import { startClanMembersScheduler } from "./workers/clan-members-scheduler";
 import { startPlayerSnapshotScheduler, initializePlayerSnapshotQueue } from "./workers/player-snapshot-scheduler";
 import { initializeSeasonScheduler, seasonQueue } from "./workers/season-scheduler";
@@ -107,7 +107,7 @@ const app = new Elysia()
 initializeSeasonScheduler().catch((error) => {
   console.error("Erro ao inicializar scheduler de temporada:", error);
 });
-/* 
+
   redisConnection.on("ready", async () => {
   console.log("🚀 Iniciando schedulers de monitoramento de jogadores...");
   
@@ -129,4 +129,4 @@ if (redisConnection.status === "ready") {
     startClanMembersScheduler();
     startPlayerSnapshotScheduler();
   })();
-} */
+}
