@@ -209,7 +209,7 @@ export function LegendAttacks({
         ) : filteredData.dates && filteredData.dates.length > 0 ? (
           <div className="space-y-4">
             {/* Filtro por data */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div className="flex items-center gap-2 flex-wrap overflow-x-auto pb-2 scrollbar-hide">
               {filteredData.dates.map((dateKey) => (
                 <Button
