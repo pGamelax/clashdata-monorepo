@@ -23,7 +23,7 @@ export const seasons = new Elysia({ prefix: "/seasons" })
       auth: true,
       admin: true,
       detail: {
-        summary: "Listar todas as configurações de temporada",
+        summary: "Listar todas as configurações de temporada (admin)",
         description:
           "Retorna uma lista com todas as configurações de temporada. Apenas administradores podem acessar esta rota.",
         tags: ["Seasons"],
@@ -31,6 +31,26 @@ export const seasons = new Elysia({ prefix: "/seasons" })
       response: {
         200: z.array(SeasonModel.seasonConfigResponse),
         403: SeasonModel.errorResponse,
+      },
+    },
+  )
+  .get(
+    "/configs",
+    async ({ user }) => {
+      const seasonService = new SeasonService();
+      const configs = await seasonService.getAllConfigs();
+      return configs;
+    },
+    {
+      auth: true,
+      detail: {
+        summary: "Listar todas as configurações de temporada (público)",
+        description:
+          "Retorna uma lista com todas as configurações de temporada para filtragem. Usuários autenticados podem acessar.",
+        tags: ["Seasons"],
+      },
+      response: {
+        200: z.array(SeasonModel.seasonConfigResponse),
       },
     },
   )

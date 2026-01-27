@@ -91,6 +91,17 @@ export const getAllConfigsQueryOptions = queryOptions({
 });
 
 /**
+ * Query options para obter todas as configurações de temporada (público, para filtragem)
+ */
+export const getConfigsQueryOptions = queryOptions({
+  queryKey: ["seasons", "configs"],
+  queryFn: async () => {
+    const response = await apiFetch(endpoints.seasons.getConfigs);
+    return response as SeasonConfig[];
+  },
+});
+
+/**
  * Função para buscar e salvar dados da temporada (teste)
  */
 export async function fetchSeasonData(configId: string) {
@@ -104,6 +115,7 @@ export async function fetchSeasonData(configId: string) {
   return response as {
     success: boolean;
     totalPlayersSaved: number;
+    playersReset: number;
     message?: string;
   };
 }

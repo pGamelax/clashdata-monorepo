@@ -1,9 +1,18 @@
-import { BarChart3, Plus, Minus, Trophy, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, Minus, Trophy, ChevronDown, ChevronUp, Calendar } from "lucide-react";
 import { useMemo, useState, startTransition } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useQuery } from "@tanstack/react-query";
+import { getConfigsQueryOptions } from "@/api/queries/seasons";
 import type { ClanLogsResponse } from "@/api/types";
 import type { PlayerDayLog } from "./-columns";
 
@@ -11,6 +20,7 @@ interface LegendAttacksProps {
   legendLogs?: ClanLogsResponse;
   isLoading?: boolean;
   isFetching?: boolean;
+  clanTag: string;
 }
 
 export function LegendAttacks({
@@ -19,22 +29,102 @@ export function LegendAttacks({
   isFetching,
 }: LegendAttacksProps) {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [selectedSeasonId, setSelectedSeasonId] = useState<string | null>("current");
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
 
-  // Mostra todos os dados
+  // Busca todas as configurações de temporada
+  const { data: seasonConfigs } = useQuery({
+    ...getConfigsQueryOptions,
+  });
+
+  // Filtra os dados baseado na temporada selecionada
   const filteredData = useMemo(() => {
     if (!legendLogs) {
       return legendLogs;
     }
 
-    // Mostra todas as datas
+    // Se não há configurações de temporada, mostra todas as datas
+    if (!seasonConfigs || seasonConfigs.length === 0) {
+      return {
+        ...legendLogs,
+        dates: legendLogs.dates || [],
+        datesData: legendLogs.datesData || {},
+      };
+    }
+
+    // Ordena as temporadas por data (mais recente primeiro)
+    const sortedSeasons = [...seasonConfigs].sort(
+      (a, b) => new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime()
+    );
+
+    // Se selecionou "current" (Temporada Atual)
+    if (selectedSeasonId === "current") {
+      const lastSeason = sortedSeasons[0];
+      const lastSeasonDate = new Date(lastSeason.scheduledAt);
+      // A temporada atual começa no mesmo dia da última temporada cadastrada
+      // Exemplo: se última temporada é 26/01/2026 2:00, temporada atual começa em 26/01/2026
+      const lastSeasonDateOnly = format(lastSeasonDate, "yyyy-MM-dd");
+
+      // Mostra apenas datas >= data da última temporada (temporada atual)
+      const filteredDates = (legendLogs.dates || []).filter((dateStr) => {
+        return dateStr >= lastSeasonDateOnly;
+      });
+
+      const filteredDatesData: Record<string, any[]> = {};
+      filteredDates.forEach((dateStr) => {
+        if (legendLogs.datesData?.[dateStr]) {
+          filteredDatesData[dateStr] = legendLogs.datesData[dateStr];
+        }
+      });
+
+      return {
+        ...legendLogs,
+        dates: filteredDates,
+        datesData: filteredDatesData,
+      };
+    }
+
+
+    const selectedSeason = sortedSeasons.find((config) => config.id === selectedSeasonId);
+    if (!selectedSeason) {
+      return {
+        ...legendLogs,
+        dates: legendLogs.dates || [],
+        datesData: legendLogs.datesData || {},
+      };
+    }
+
+
+    const selectedSeasonDate = new Date(selectedSeason.scheduledAt);
+    const selectedSeasonDateOnly = format(selectedSeasonDate, "yyyy-MM-dd");
+    
+
+    const selectedIndex = sortedSeasons.findIndex((s) => s.id === selectedSeasonId);
+    const nextSeason = sortedSeasons[selectedIndex - 1];
+    
+
     const filteredDates = (legendLogs.dates || []).filter((dateStr) => {
-      return true;
+      if (nextSeason) {
+        const nextSeasonDate = new Date(nextSeason.scheduledAt);
+        const nextSeasonDateOnly = format(nextSeasonDate, "yyyy-MM-dd");
+
+        return dateStr >= selectedSeasonDateOnly && dateStr < nextSeasonDateOnly;
+      } else {
+        const penultimateSeason = sortedSeasons[1];
+        if (penultimateSeason) {
+          const penultimateSeasonDate = new Date(penultimateSeason.scheduledAt);
+          const penultimateSeasonDateOnly = format(penultimateSeasonDate, "yyyy-MM-dd");
+         
+          return dateStr >= penultimateSeasonDateOnly && dateStr < selectedSeasonDateOnly;
+        }
+        
+        return dateStr < selectedSeasonDateOnly;
+      }
     });
 
-    // Filtra os dados por data
+
     const filteredDatesData: Record<string, any[]> = {};
     filteredDates.forEach((dateStr) => {
       if (legendLogs.datesData?.[dateStr]) {
@@ -47,7 +137,7 @@ export function LegendAttacks({
       dates: filteredDates,
       datesData: filteredDatesData,
     };
-    }, [legendLogs]);
+    }, [legendLogs, selectedSeasonId, seasonConfigs]);
 
   // Seleciona a data atual ou a primeira disponível
   const currentDate = selectedDate || filteredData?.dates?.[0] || null;
@@ -57,12 +147,12 @@ export function LegendAttacks({
       : [];
   }, [currentDate, filteredData]);
 
-  // Ordena por troféus finais (maior primeiro) e adiciona ranking
+
   const sortedData = useMemo(() => {
     return [...currentData].sort((a, b) => b.final - a.final);
   }, [currentData]);
 
-  // Paginação
+
   const paginatedData = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
     const end = start + pageSize;
@@ -74,8 +164,17 @@ export function LegendAttacks({
   const handleDateChange = (date: string | null) => {
     startTransition(() => {
       setSelectedDate(date);
-      setCurrentPage(1); // Reset page when changing date
-      setExpandedRows({}); // Reset expanded rows
+      setCurrentPage(1); 
+      setExpandedRows({}); 
+    });
+  };
+
+  const handleSeasonChange = (seasonId: string | null) => {
+    startTransition(() => {
+      setSelectedSeasonId(seasonId);
+      setSelectedDate(null); 
+      setCurrentPage(1); 
+      setExpandedRows({}); 
     });
   };
 
@@ -86,19 +185,12 @@ export function LegendAttacks({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <BarChart3 className="w-5 h-5 text-primary" />
-        <div>
-          <h2 className="text-lg sm:text-xl font-semibold tracking-tight">
-            Legend League Attacks
-          </h2>
-        </div>
-      </div>
-
-      <div className="bg-card border border-border rounded-lg p-4 sm:p-5 relative">
+      <div className="bg-card border border-border rounded-xl p-4 sm:p-6 relative overflow-hidden">
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary/20 via-primary/40 to-primary/20" />
         {isFetching && (
-          <div className="absolute top-2 right-2 z-10">
-            <Skeleton className="h-3 w-20" />
+          <div className="absolute top-3 right-3 z-10 flex items-center gap-2 text-xs text-muted-foreground">
+            <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+            <span>Atualizando...</span>
           </div>
         )}
         {isLoading || !filteredData ? (
@@ -117,20 +209,55 @@ export function LegendAttacks({
         ) : filteredData.dates && filteredData.dates.length > 0 ? (
           <div className="space-y-4">
             {/* Filtro por data */}
-            <div className="flex gap-2 overflow-x-auto pb-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 flex-wrap overflow-x-auto pb-2 scrollbar-hide">
               {filteredData.dates.map((dateKey) => (
-                <button
+                <Button
+                  size="sm"
                   key={dateKey}
                   onClick={() => handleDateChange(dateKey)}
-                  className={`px-4 py-2 rounded-lg font-medium text-sm whitespace-nowrap transition-colors ${
+                  className={` rounded-xl font-medium text-sm whitespace-nowrap transition-all ${
                     currentDate === dateKey
-                      ? "bg-primary text-primary-foreground"
+                      ? "bg-primary text-primary-foreground shadow-md"
                       : "bg-muted text-muted-foreground hover:bg-muted/80"
                   }`}
                 >
                   {formatDateDisplay(dateKey)}
-                </button>
+                </Button>
               ))}
+              </div>
+              {seasonConfigs && seasonConfigs.length > 0 && (
+                <Select
+                  value={selectedSeasonId || "current"}
+                  onValueChange={(value) => handleSeasonChange(value)}
+                >
+                  <SelectTrigger className="sm:w-[250px] w-full">
+                    <SelectValue placeholder="Temporada Atual" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {seasonConfigs.length > 0 && (
+                      <SelectItem value="current">
+                        <div className="flex items-center gap-2">
+                          <Calendar className="w-4 h-4" />
+                          <span>Temporada Atual</span>
+                        </div>
+                      </SelectItem>
+                    )}
+                    {seasonConfigs
+                      .sort((a, b) => new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime())
+                      .map((config) => (
+                        <SelectItem key={config.id} value={config.id}>
+                          <div className="flex items-center gap-2">
+                            <Calendar className="w-4 h-4" />
+                            <span>
+                              {format(new Date(config.scheduledAt), "dd/MM/yyyy", { locale: ptBR })}
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
 
             {/* Lista de jogadores */}
@@ -154,32 +281,32 @@ export function LegendAttacks({
                     return (
                       <div
                         key={rowId}
-                        className={`rounded-lg transition-colors ${
+                        className={`rounded-lg transition-all ${
                           isTop3
-                            ? "bg-muted/50 border-l-2 border-primary"
-                            : "hover:bg-muted/30"
+                            ? "bg-gradient-to-r from-primary/5 to-primary/10 border-2 border-primary/30 shadow-sm"
+                            : "hover:bg-muted/50 border border-transparent hover:border-border"
                         }`}
                       >
                         <div
-                          className="flex items-center gap-3 p-3 cursor-pointer"
+                          className="flex items-center gap-2.5 p-2.5 sm:p-3 cursor-pointer"
                           onClick={() =>
                             setExpandedRows((v) => ({ ...v, [rowId]: !v[rowId] }))
                           }
                         >
                           <div
-                            className={`flex items-center justify-center w-8 h-8 rounded font-semibold text-sm flex-shrink-0 ${
+                            className={`flex items-center justify-center w-8 h-8 rounded-lg font-bold text-sm flex-shrink-0 shadow-sm ${
                               isTop3
-                                ? "bg-primary/10 text-primary"
+                                ? "bg-primary text-primary-foreground ring-2 ring-primary/20"
                                 : "bg-muted text-muted-foreground"
                             }`}
                           >
                             {globalRank}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <span className="font-medium text-sm sm:text-base text-foreground block mb-0.5">
+                            <span className="font-medium text-sm text-foreground block mb-0.5">
                               {player.playerName}
                             </span>
-                            <div className="flex items-center gap-4 text-xs sm:text-sm">
+                            <div className="flex items-center gap-3 text-xs sm:text-sm">
                             
                                 <div className="flex items-center gap-1 text-green-500">
                                   <Plus className="w-3 h-3" />

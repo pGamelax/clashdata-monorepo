@@ -1414,7 +1414,7 @@ function RouteComponent() {
                                 const result = await fetchSeasonData(config.id);
                                 showToast(
                                   "success",
-                                  `Dados salvos: ${result.totalPlayersSaved} jogadores`
+                                  `Dados salvos: ${result.totalPlayersSaved} jogadores. ${result.playersReset} jogadores tiveram troféus resetados para 5000.`
                                 );
                                 refetchSeasonConfigs();
                               } catch (error: unknown) {

@@ -44,23 +44,25 @@ export function ClanStats({ warWins, warLosses }: ClanStatsProps) {
   ];
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
       {stats.map((stat, i) => {
         const Icon = stat.icon;
         return (
           <div
             key={i}
-            className="bg-card border border-border rounded-xl p-4 sm:p-5"
+            className="bg-card border border-border rounded-lg p-3 sm:p-4 flex flex-col items-start justify-between"
           >
-            <div className={`mb-3 ${stat.color}`}>
-              <Icon size={20} className="sm:w-6 sm:h-6" />
+            <div className={`mb-2 ${stat.color}`}>
+              <Icon size={18} className="sm:w-5 sm:h-5" />
             </div>
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-1.5">
-              {stat.label}
-            </p>
-            <p className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight text-foreground">
-              {stat.value}
-            </p>
+            <div className="w-full">
+              <p className="text-[10px] sm:text-xs font-medium uppercase tracking-wide text-muted-foreground mb-1">
+                {stat.label}
+              </p>
+              <p className="text-lg sm:text-xl lg:text-2xl font-bold tracking-tight text-foreground">
+                {stat.value}
+              </p>
+            </div>
           </div>
         );
       })}

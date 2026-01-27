@@ -1,6 +1,7 @@
-import { Trophy } from "lucide-react";
 import { Link } from "@tanstack/react-router";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { useMemo, useState } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { ClanRankingResponse } from "@/api/types";
 
 interface CurrentRankingProps {
@@ -8,26 +9,29 @@ interface CurrentRankingProps {
   isFetching?: boolean;
 }
 
-export function CurrentRanking({ ranking, isFetching }: CurrentRankingProps) {
+export function CurrentRanking({ ranking }: CurrentRankingProps) {
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
+
   if (!ranking || ranking.players.length === 0) {
     return null;
   }
 
+  const totalPages = Math.ceil(ranking.players.length / pageSize);
+  const paginatedPlayers = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    const end = start + pageSize;
+    return ranking.players.slice(start, end);
+  }, [ranking.players, currentPage]);
+
   return (
     <div className="space-y-4">
-      <h2 className="text-lg sm:text-xl font-semibold tracking-tight flex items-center gap-2">
-        <Trophy className="w-5 h-5 text-primary" />
-        Ranking Atual
-      </h2>
-      <div className="bg-card border border-border rounded-lg p-4 sm:p-5 relative">
-        {isFetching && (
-          <div className="absolute top-2 right-2 z-10">
-            <Skeleton className="h-3 w-20" />
-          </div>
-        )}
-        <div className="space-y-2">
-          {ranking.players.slice(0, 15).map((player) => {
-            const isTop3 = player.rank <= 3;
+      <div className="bg-card border border-border rounded-xl p-4 sm:p-6 relative overflow-hidden">
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary/20 via-primary/40 to-primary/20" />
+        <div className="space-y-2 mt-2">
+          {paginatedPlayers.map((player, index) => {
+            const localRank = (currentPage - 1) * pageSize + index + 1;
+            const isTop3 = localRank <= 3;
             const isLegend = player.leagueTier?.name === "Legend League";
             return (
               <Link
@@ -35,24 +39,24 @@ export function CurrentRanking({ ranking, isFetching }: CurrentRankingProps) {
                 to="/players/$playerTag"
                 params={{ playerTag: player.playerTag.replace("#", "") }}
                 search={{ error: undefined }}
-                className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${
+                className={`flex items-center gap-2.5 p-2.5 sm:p-3 rounded-lg transition-all ${
                   isTop3
-                    ? "bg-muted/50 border-l-2 border-primary"
-                    : "hover:bg-muted/30"
+                    ? "bg-gradient-to-r from-primary/5 to-primary/10 border-2 border-primary/30 shadow-sm"
+                    : "hover:bg-muted/50 border border-transparent hover:border-border"
                 }`}
               >
                 <div
-                  className={`flex items-center justify-center w-8 h-8 rounded font-semibold text-sm flex-shrink-0 ${
+                  className={`flex items-center justify-center w-8 h-8 rounded-lg font-bold text-sm flex-shrink-0 shadow-sm ${
                     isTop3
-                      ? "bg-primary/10 text-primary"
+                      ? "bg-primary text-primary-foreground ring-2 ring-primary/20"
                       : "bg-muted text-muted-foreground"
                   }`}
                 >
-                  {player.rank}
+                  {localRank}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">
-                    <span className="font-medium text-sm sm:text-base text-foreground truncate">
+                    <span className="font-medium text-sm text-foreground truncate">
                       {player.playerName}
                     </span>
                     {isLegend && (
@@ -83,6 +87,38 @@ export function CurrentRanking({ ranking, isFetching }: CurrentRankingProps) {
             );
           })}
         </div>
+
+        {/* Paginação */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between pt-4 mt-4 border-t border-border">
+            <div className="text-sm text-muted-foreground">
+              Mostrando {(currentPage - 1) * pageSize + 1} a{" "}
+              {Math.min(currentPage * pageSize, ranking.players.length)} de{" "}
+              {ranking.players.length} jogadores
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              <div className="text-sm text-muted-foreground">
+                Página {currentPage} de {totalPages}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+              >
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

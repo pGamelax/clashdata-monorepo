@@ -93,6 +93,7 @@ function RouteComponent() {
           clanName={clanStats.name}
           clanTag={clanTag}
           description={clanStats.description}
+          compact={true}
         />
 
         <ClanStats

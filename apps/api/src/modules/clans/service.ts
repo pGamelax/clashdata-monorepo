@@ -147,9 +147,8 @@ export class ClanServiceImpl extends ClanService {
       `https://api.clashofclans.com/v1/clans/${encodeURIComponent(clanTag)}`,
       { headers: { Authorization: `Bearer ${env.TOKEN_COC}` } },
     );
-
+   
     if (!response.data) throw new BadRequest("Clan not found");
-
     return {
       ...response.data,
       totalWars:

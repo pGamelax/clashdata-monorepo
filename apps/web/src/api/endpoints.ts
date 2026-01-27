@@ -58,6 +58,7 @@ export const endpoints = {
   // Seasons
   seasons: {
     getAllConfigs: `${API_BASE_URL}/seasons/all`,
+    getConfigs: `${API_BASE_URL}/seasons/configs`,
     setSeasonEndDate: `${API_BASE_URL}/seasons/set-season-end-date`,
     getSeasonsByClan: (clanTag: string) =>
       `${API_BASE_URL}/seasons/by-clan/${encodeURIComponent(clanTag)}`,

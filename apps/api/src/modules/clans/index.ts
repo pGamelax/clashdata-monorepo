@@ -101,7 +101,7 @@ export const clans = new Elysia({ prefix: "/clans" })
     async ({ query, user }) => {
       const { clanTag } = query;
       const normalizedTag = normalizeTag(clanTag);
-
+    
       // Verifica se o clan pertence ao usuário logado
       await verifyClanOwnership(normalizedTag, user.id);
 

@@ -61,6 +61,7 @@ export namespace SeasonModel {
   export const fetchSeasonDataResponse = z.object({
     success: z.boolean(),
     totalPlayersSaved: z.number(),
+    playersReset: z.number(),
     message: z.string().optional(),
   });
 

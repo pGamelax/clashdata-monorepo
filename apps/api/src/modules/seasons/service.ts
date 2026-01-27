@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { apiClient } from "@/config/api-client";
 import { NotFound } from "@/errors/Errors";
+import { addPlayerToSnapshot } from "@/utils/queue-player";
+import { redisConnection } from "@/config/redis";
 
 export class SeasonService {
   async getAllConfigs() {
@@ -86,6 +88,9 @@ export class SeasonService {
               `/players/${encodeURIComponent(member.tag)}`
             );
 
+            // Adiciona o jogador ao playerSnapshot (independente de ter previousSeason)
+            await addPlayerToSnapshot(member.tag, playerData.name);
+
             // Verifica se tem previousSeason
             if (playerData.legendStatistics?.previousSeason) {
               const previousSeason = playerData.legendStatistics.previousSeason;
@@ -141,6 +146,45 @@ export class SeasonService {
       }
     }
 
+    // Reseta os troféus de TODOS os jogadores no playerSnapshot para 5000
+    // Isso corrige o bug onde o sistema calcula ataques negativos após o reset da temporada
+    console.log("🔄 Resetando troféus de todos os jogadores para 5000 (reset da temporada)...");
+    const resetResult = await prisma.playerSnapshot.updateMany({
+      data: {
+        lastTrophies: 5000,
+      },
+    });
+    console.log(`✅ ${resetResult.count} jogadores tiveram seus troféus resetados para 5000 no banco`);
+
+    // Reseta também o cache do Redis para todos os jogadores
+    try {
+      const allPlayers = await prisma.playerSnapshot.findMany({
+        select: { playerTag: true },
+      });
+      
+      const SNAPSHOT_CACHE_KEY_PREFIX = "cache:snapshot:";
+      const CACHE_TTL = 86400; // 24 horas
+      
+      let cacheResetCount = 0;
+      for (const player of allPlayers) {
+        try {
+          await redisConnection.set(
+            `${SNAPSHOT_CACHE_KEY_PREFIX}${player.playerTag}`,
+            JSON.stringify({ lastTrophies: 5000 }),
+            "EX",
+            CACHE_TTL
+          );
+          cacheResetCount++;
+        } catch (error) {
+          // Ignora erros individuais de cache
+        }
+      }
+      console.log(`✅ Cache do Redis resetado para ${cacheResetCount} jogadores`);
+    } catch (error: any) {
+      console.error("⚠️ Erro ao resetar cache do Redis:", error.message?.substring(0, 100));
+      // Não falha o job se o cache falhar
+    }
+
     // Marca a configuração como processada
     await prisma.seasonConfig.update({
       where: { id: configId },
@@ -152,6 +196,7 @@ export class SeasonService {
     return {
       success: true,
       totalPlayersSaved,
+      playersReset: resetResult.count,
     };
   }
 

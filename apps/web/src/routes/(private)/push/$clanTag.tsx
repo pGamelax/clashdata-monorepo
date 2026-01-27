@@ -59,31 +59,32 @@ function RouteComponent() {
   return (
     <div className="min-h-screen bg-background">
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6 lg:py-8 space-y-4 sm:space-y-6">
-      <ClanHeader
+        <ClanHeader
           clanName={clanInfo?.name || legendLogs?.clanName || ""}
           clanTag={clanTag}
           description={clanInfo?.description || ""}
+          compact={true}
         />
 
-        <Tabs defaultValue="current" className="space-y-4 w-full">
-        <TabsList className="grid w-full grid-cols-3 mb-4">
-              <TabsTrigger value="current" className="flex-shrink-0">
-                <Trophy className="w-4 h-4 mr-2" />
-                <span className="hidden sm:inline">Ranking Atual</span>
-                <span className="sm:hidden">Atual</span>
-              </TabsTrigger>
-              <TabsTrigger value="past" className="flex-shrink-0">
-                <Calendar className="w-4 h-4 mr-2" />
-                <span className="hidden sm:inline">Temporadas Passadas</span>
-                <span className="sm:hidden">Passadas</span>
-              </TabsTrigger>
-              <TabsTrigger value="attacks" className="flex-shrink-0">
-                <BarChart3 className="w-4 h-4 mr-2" />
-                <span className="hidden sm:inline">Legend League Attacks</span>
-                <span className="sm:hidden">Attacks</span>
-              </TabsTrigger>
-            </TabsList>
-        
+        <Tabs defaultValue="attacks" className="space-y-4 w-full">
+          <TabsList className="grid w-full grid-cols-3 mb-4">
+            <TabsTrigger value="attacks" className="flex-shrink-0">
+              <BarChart3 className="w-4 h-4 mr-2" />
+              <span className="hidden sm:inline">Legend League Attacks</span>
+              <span className="sm:hidden">Attacks</span>
+            </TabsTrigger>
+            <TabsTrigger value="current" className="flex-shrink-0">
+              <Trophy className="w-4 h-4 mr-2" />
+              <span className="hidden sm:inline">Ranking Atual</span>
+              <span className="sm:hidden">Atual</span>
+            </TabsTrigger>
+            <TabsTrigger value="past" className="flex-shrink-0">
+              <Calendar className="w-4 h-4 mr-2" />
+              <span className="hidden sm:inline">Temporadas Passadas</span>
+              <span className="sm:hidden">Passadas</span>
+            </TabsTrigger>
+          </TabsList>
+          
 
           <TabsContent value="current" className="space-y-4">
             <CurrentRanking ranking={ranking} isFetching={isFetchingRanking} />
@@ -98,6 +99,7 @@ function RouteComponent() {
               legendLogs={legendLogs}
               isLoading={isLoadingLogs}
               isFetching={isFetchingLogs}
+              clanTag={clanTag}
             />
           </TabsContent>
         </Tabs>

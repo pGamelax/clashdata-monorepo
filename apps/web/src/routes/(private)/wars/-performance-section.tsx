@@ -24,10 +24,7 @@ export function PerformanceSection({
   return (
     <div className="space-y-3 sm:space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg sm:text-xl font-semibold tracking-tight flex items-center gap-2">
-          <ChartSpline className="w-5 h-5 text-primary" />
-          Performance Detalhada
-        </h2>
+     
         {isFetchingFull && (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="w-4 h-4 animate-spin" />
