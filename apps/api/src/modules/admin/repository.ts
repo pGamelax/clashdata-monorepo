@@ -172,5 +172,24 @@ export class AdminRepository {
 
     return clan;
   }
+
+  /**
+   * Deleta um clã do banco de dados
+   */
+  async deleteClan(tag: string) {
+    const clan = await this.findClanByTag(tag);
+    if (!clan) {
+      return null;
+    }
+
+    // Deleta o clã (cascade vai deletar os userClans automaticamente)
+    await prisma.clan.delete({
+      where: {
+        id: clan.id,
+      },
+    });
+
+    return { success: true };
+  }
 }
 

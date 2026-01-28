@@ -241,5 +241,75 @@ export const admin = new Elysia({ prefix: "/admin" })
         404: AdminModel.errorResponse,
       },
     },
+  )
+  .post(
+    "/delete-clan",
+    async ({ body }) => {
+      const adminService = new AdminServiceImpl();
+      const normalizedTag = normalizeTag(body.clanTag);
+
+      const result = await adminService.deleteClan(normalizedTag);
+
+      return result;
+    },
+    {
+      admin: true,
+      detail: {
+        summary: "Deletar clã",
+        description:
+          "Remove um clã do sistema. Esta ação também remove todos os acessos de usuários a este clã. Apenas administradores podem executar esta ação.",
+        tags: ["Admin"],
+        examples: [
+          {
+            summary: "Exemplo de requisição",
+            description: "Deletar um clã",
+            value: {
+              clanTag: "#CLAN123",
+            },
+          },
+          {
+            summary: "Exemplo de resposta",
+            description: "Confirmação de sucesso",
+            value: {
+              message: "Clã deletado com sucesso",
+            },
+          },
+        ],
+      },
+      body: AdminModel.deleteClanBody,
+      response: {
+        200: AdminModel.deleteClanResponse,
+        400: AdminModel.errorResponse,
+        403: AdminModel.errorResponse,
+        404: AdminModel.errorResponse,
+      },
+    },
+  )
+  .get(
+    "/search-clan",
+    async ({ query }) => {
+      const adminService = new AdminServiceImpl();
+      const normalizedTag = normalizeTag(query.clanTag);
+
+      const result = await adminService.searchClanFromAPI(normalizedTag);
+
+      return result;
+    },
+    {
+      admin: true,
+      detail: {
+        summary: "Buscar clã na API da Supercell",
+        description:
+          "Busca informações de um clã na API da Supercell. Apenas administradores podem executar esta ação.",
+        tags: ["Admin"],
+      },
+      query: AdminModel.searchClanQuery,
+      response: {
+        200: AdminModel.searchClanResponse,
+        400: AdminModel.errorResponse,
+        403: AdminModel.errorResponse,
+        404: AdminModel.errorResponse,
+      },
+    },
   );
 

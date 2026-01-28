@@ -20,6 +20,8 @@ export abstract class AdminService {
     userId: string,
     clanTag: string,
   ): Promise<AdminModel.RevokeClanAccessResponse>;
+  abstract deleteClan(clanTag: string): Promise<AdminModel.DeleteClanResponse>;
+  abstract searchClanFromAPI(clanTag: string): Promise<AdminModel.SearchClanResponse>;
 }
 
 export class AdminServiceImpl extends AdminService {
@@ -213,6 +215,60 @@ export class AdminServiceImpl extends AdminService {
     return {
       message: "Acesso ao clã revogado com sucesso",
     };
+  }
+
+  async deleteClan(clanTag: string): Promise<AdminModel.DeleteClanResponse> {
+    // Normaliza a tag do clã (adiciona # se não tiver)
+    const normalizedTag = clanTag.startsWith("#") ? clanTag : `#${clanTag}`;
+
+    // Verifica se o clã existe
+    const clan = await this.repository.findClanByTag(normalizedTag);
+    if (!clan) {
+      throw new NotFound("Clã não encontrado");
+    }
+
+    // Deleta o clã
+    const result = await this.repository.deleteClan(normalizedTag);
+    if (!result) {
+      throw new BadRequest("Erro ao deletar clã");
+    }
+
+    return {
+      message: "Clã deletado com sucesso",
+    };
+  }
+
+  async searchClanFromAPI(clanTag: string): Promise<AdminModel.SearchClanResponse> {
+    // Normaliza a tag do clã (adiciona # se não tiver)
+    const normalizedTag = clanTag.startsWith("#") ? clanTag : `#${clanTag}`;
+
+    try {
+      const response = await axios.get(
+        `https://api.clashofclans.com/v1/clans/${encodeURIComponent(normalizedTag)}`,
+        { headers: { Authorization: `Bearer ${env.TOKEN_COC}` } },
+      );
+
+      if (!response.data) {
+        throw new NotFound("Clã não encontrado na API da Supercell");
+      }
+
+      return {
+        tag: response.data.tag,
+        name: response.data.name,
+        description: response.data.description,
+        members: response.data.members,
+        clanLevel: response.data.clanLevel,
+        badgeUrls: response.data.badgeUrls,
+      };
+    } catch (error: any) {
+      if (axios.isAxiosError(error)) {
+        if (error.response?.status === 404) {
+          throw new NotFound("Clã não encontrado na API da Supercell");
+        }
+        throw new BadRequest("Erro ao buscar clã na API da Supercell");
+      }
+      throw error;
+    }
   }
 }
 

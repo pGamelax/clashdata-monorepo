@@ -93,5 +93,40 @@ export namespace AdminModel {
   });
 
   export type CreateClanResponse = z.infer<typeof createClanResponse>;
+
+  // Schema para deletar clã
+  export const deleteClanBody = z.object({
+    clanTag: z.string().min(1, "Tag do clã é obrigatória"),
+  });
+
+  export type DeleteClanBody = z.infer<typeof deleteClanBody>;
+
+  export const deleteClanResponse = z.object({
+    message: z.string(),
+  });
+
+  export type DeleteClanResponse = z.infer<typeof deleteClanResponse>;
+
+  // Schema para buscar clã na API
+  export const searchClanQuery = z.object({
+    clanTag: z.string().min(1, "Tag do clã é obrigatória"),
+  });
+
+  export type SearchClanQuery = z.infer<typeof searchClanQuery>;
+
+  export const searchClanResponse = z.object({
+    tag: z.string(),
+    name: z.string(),
+    description: z.string().optional(),
+    members: z.number().optional(),
+    clanLevel: z.number().optional(),
+    badgeUrls: z.object({
+      small: z.string().optional(),
+      medium: z.string().optional(),
+      large: z.string().optional(),
+    }).optional(),
+  });
+
+  export type SearchClanResponse = z.infer<typeof searchClanResponse>;
 }
 

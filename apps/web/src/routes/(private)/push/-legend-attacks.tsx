@@ -1,5 +1,5 @@
-import { Plus, Minus, Trophy, ChevronDown, ChevronUp, Calendar } from "lucide-react";
-import { useMemo, useState, startTransition } from "react";
+import { Plus, Minus, Trophy, ChevronDown, ChevronUp, Calendar, Copy } from "lucide-react";
+import { useMemo, useState, startTransition, useCallback } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import {
@@ -183,10 +183,63 @@ export function LegendAttacks({
     return format(date, "dd/MM/yyyy", { locale: ptBR });
   };
 
+  const shareableText = useMemo(() => {
+    if (!sortedData || sortedData.length === 0 || !currentDate) return "";
+    
+    // Função para formatar número com superscript
+    const formatWithSuperscript = (value: number, count: number): string => {
+      const superscriptMap: Record<string, string> = {
+        "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴", 
+        "5": "⁵", "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹"
+      };
+      const superscriptStr = count.toString().split("").map(d => superscriptMap[d] || d).join("");
+      return `${Math.abs(value)}${superscriptStr}`;
+    };
+    
+    let text = "*Legend League Attacks*\n";
+    text += "GAIN  LOSS  FINAL  *NAME*\n";
+    
+    sortedData.forEach((player) => {
+      const gainStr = `+${formatWithSuperscript(player.gain, player.gainCount)}`;
+      const lossStr = `-${formatWithSuperscript(player.loss, player.lossCount)}`;
+      const finalStr = String(player.final);
+      
+      // Alinha os números em colunas
+      const gainPadded = gainStr.padEnd(7); // Espaço para +264³
+      const lossPadded = lossStr.padEnd(7); // Espaço para -276⁸
+      const finalPadded = finalStr.padEnd(6); // Espaço para 5555
+      
+      text += `\ ${gainPadded} ${lossPadded} ${finalPadded} \ ‎${player.playerName}\n`;
+    });
+    
+    return text.trim();
+  }, [sortedData, currentDate]);
+
+  const copyToClipboard = useCallback(() => {
+    if (shareableText) {
+      navigator.clipboard.writeText(shareableText);
+    }
+  }, [shareableText]);
+
   return (
     <div className="space-y-4">
       <div className="bg-card border border-border rounded-xl p-4 sm:p-6 relative overflow-hidden">
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary/20 via-primary/40 to-primary/20" />
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg sm:text-xl font-semibold">Legend League Attacks</h2>
+          {sortedData.length > 0 && currentDate && (
+            <Button
+              onClick={copyToClipboard}
+              variant="outline"
+              size="sm"
+              className="gap-2"
+            >
+              <Copy className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">Copiar Ranking</span>
+              <span className="sm:hidden">Copiar</span>
+            </Button>
+          )}
+        </div>
         {isFetching && (
           <div className="absolute top-3 right-3 z-10 flex items-center gap-2 text-xs text-muted-foreground">
             <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
@@ -274,7 +327,7 @@ export function LegendAttacks({
                     const globalRank = (currentPage - 1) * pageSize + index + 1;
                     const rowId = `${player.playerTag}-${currentDate}`;
                     const isExpanded = expandedRows[rowId];
-                    const netChange = player.gain + player.loss;
+                    const netChange = player.gain - player.loss;
                     const isPositive = netChange > 0;
                     const isTop3 = globalRank <= 3;
 

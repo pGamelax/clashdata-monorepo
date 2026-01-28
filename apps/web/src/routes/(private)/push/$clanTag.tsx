@@ -87,11 +87,18 @@ function RouteComponent() {
           
 
           <TabsContent value="current" className="space-y-4">
-            <CurrentRanking ranking={ranking} isFetching={isFetchingRanking} />
+            <CurrentRanking 
+              ranking={ranking} 
+              isFetching={isFetchingRanking}
+              clanName={clanInfo?.name || legendLogs?.clanName}
+            />
           </TabsContent>
 
           <TabsContent value="past" className="space-y-4">
-            <PastSeasons clanTag={clanTag} />
+            <PastSeasons 
+              clanTag={clanTag}
+              clanName={clanInfo?.name || legendLogs?.clanName}
+            />
           </TabsContent>
 
           <TabsContent value="attacks" className="space-y-4">

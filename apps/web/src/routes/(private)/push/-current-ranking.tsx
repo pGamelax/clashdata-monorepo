@@ -1,15 +1,16 @@
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
-import { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useMemo, useState, useCallback } from "react";
+import { ChevronLeft, ChevronRight, Copy } from "lucide-react";
 import type { ClanRankingResponse } from "@/api/types";
 
 interface CurrentRankingProps {
   ranking?: ClanRankingResponse;
   isFetching?: boolean;
+  clanName?: string;
 }
 
-export function CurrentRanking({ ranking }: CurrentRankingProps) {
+export function CurrentRanking({ ranking, clanName }: CurrentRankingProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
 
@@ -24,10 +25,65 @@ export function CurrentRanking({ ranking }: CurrentRankingProps) {
     return ranking.players.slice(start, end);
   }, [ranking.players, currentPage]);
 
+  const shareableText = useMemo(() => {
+    if (!ranking || ranking.players.length === 0) return "";
+    
+    const clanTitle = clanName || "Clã";
+    let text = `🏆 RANKING LEGEND ATTACKS LEAGUE - ${clanTitle}\n\n`;
+    text += `📊 Ranking Atual de Troféus:\n\n`;
+    
+    ranking.players.forEach((player, index) => {
+      const rank = index + 1;
+      const isLegend = player.leagueTier?.name === "Legend League";
+      const legendBadge = isLegend ? " ⭐ LEGEND" : "";
+      
+      text += `${rank}. ${player.playerName}${legendBadge}\n`;
+      text += `   ${player.playerTag}\n`;
+      text += `   🏆 ${player.trophies.toLocaleString()} troféus`;
+      
+      if (player.bestTrophies > player.trophies) {
+        text += ` (Melhor: ${player.bestTrophies.toLocaleString()})`;
+      }
+      
+      if (player.leagueTier?.name) {
+        text += `\n   ${player.leagueTier.name}`;
+      }
+      
+      text += `\n\n`;
+    });
+    
+    text += `\n📈 Total de Jogadores: ${ranking.players.length}\n`;
+    const legendCount = ranking.players.filter(p => p.leagueTier?.name === "Legend League").length;
+    if (legendCount > 0) {
+      text += `⭐ Jogadores na Legend League: ${legendCount}\n`;
+    }
+    
+    return text;
+  }, [ranking, clanName]);
+
+  const copyToClipboard = useCallback(() => {
+    if (shareableText) {
+      navigator.clipboard.writeText(shareableText);
+    }
+  }, [shareableText]);
+
   return (
     <div className="space-y-4">
       <div className="bg-card border border-border rounded-xl p-4 sm:p-6 relative overflow-hidden">
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary/20 via-primary/40 to-primary/20" />
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg sm:text-xl font-semibold">Ranking Atual</h2>
+          <Button
+            onClick={copyToClipboard}
+            variant="outline"
+            size="sm"
+            className="gap-2"
+          >
+            <Copy className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            <span className="hidden sm:inline">Copiar Ranking</span>
+            <span className="sm:hidden">Copiar</span>
+          </Button>
+        </div>
         <div className="space-y-2 mt-2">
           {paginatedPlayers.map((player, index) => {
             const localRank = (currentPage - 1) * pageSize + index + 1;

@@ -1,7 +1,15 @@
+import { useState } from "react";
 import { ChartSpline, Shield, Trophy, Loader2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DataTable } from "./-data-table";
 import { CWLSelector } from "./-cwl-selector";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import type { PlayerStats } from "./-types";
 import { columns } from "./-columns";
 import { cwlColumns } from "./-cwl-columns";
@@ -21,10 +29,11 @@ export function PerformanceSection({
   currentClanMemberTags,
   clanName,
 }: PerformanceSectionProps) {
+  const [isCWLSelectorOpen, setIsCWLSelectorOpen] = useState(false);
+
   return (
     <div className="space-y-3 sm:space-y-4">
       <div className="flex items-center justify-between">
-     
         {isFetchingFull && (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="w-4 h-4 animate-spin" />
@@ -32,10 +41,19 @@ export function PerformanceSection({
             <span className="sm:hidden">Carregando...</span>
           </div>
         )}
+        <Button
+          variant="outline"
+          onClick={() => setIsCWLSelectorOpen(true)}
+          className="gap-2"
+        >
+          <Trophy className="w-4 h-4" />
+          <span className="hidden sm:inline">Seleção CWL</span>
+          <span className="sm:hidden">CWL</span>
+        </Button>
       </div>
 
       <Tabs defaultValue="normal" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 mb-4">
+        <TabsList className="grid w-full grid-cols-2 mb-4">
           <TabsTrigger value="normal" className="flex items-center gap-2">
             <ChartSpline className="w-4 h-4" />
             <span className="hidden sm:inline">Guerras Normais</span>
@@ -45,11 +63,6 @@ export function PerformanceSection({
             <Shield className="w-4 h-4" />
             <span className="hidden sm:inline">Liga de Clãs (CWL)</span>
             <span className="sm:hidden">CWL</span>
-          </TabsTrigger>
-          <TabsTrigger value="cwl-selector" className="flex items-center gap-2">
-            <Trophy className="w-4 h-4" />
-            <span className="hidden sm:inline">Seleção CWL</span>
-            <span className="sm:hidden">Seleção</span>
           </TabsTrigger>
         </TabsList>
 
@@ -76,17 +89,20 @@ export function PerformanceSection({
             )}
           </div>
         </TabsContent>
-
-        <TabsContent value="cwl-selector" className="space-y-3">
-          <div className="bg-card border border-border rounded-xl p-4 sm:p-5 lg:p-6">
-            <CWLSelector
-              players={players as any}
-              currentClanMembers={currentClanMemberTags}
-              clanName={clanName}
-            />
-          </div>
-        </TabsContent>
       </Tabs>
+
+      <Dialog open={isCWLSelectorOpen} onOpenChange={setIsCWLSelectorOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Seleção CWL - Liga de Clãs</DialogTitle>
+          </DialogHeader>
+          <CWLSelector
+            players={players as any}
+            currentClanMembers={currentClanMemberTags}
+            clanName={clanName}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

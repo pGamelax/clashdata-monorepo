@@ -6,22 +6,20 @@ export const apiClient: AxiosInstance = axios.create({
   headers: {
     Authorization: `Bearer ${env.TOKEN_COC}`,
   },
-  timeout: 30000, // Aumentado para 30s para evitar timeouts prematuros
+  timeout: 30000, 
 });
 
-// Interceptor para tratamento de erros
-// Não faz retry aqui - deixa o BullMQ fazer o retry com backoff configurado
 apiClient.interceptors.response.use(
   (response) => {
     return response;
   },
   async (error) => {
-    // Erros de rede - deixa o BullMQ fazer retry
+
     if (error.code === "ECONNREFUSED" || error.code === "ETIMEDOUT") {
       throw error;
     }
     
-    // Erro 429 (rate limit) - deixa o BullMQ fazer retry
+
     if (error.response?.status === 429) {
       throw error;
     }

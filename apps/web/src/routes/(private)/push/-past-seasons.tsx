@@ -1,5 +1,5 @@
-import { Calendar, ChevronLeft, ChevronRight, Trophy } from "lucide-react";
-import { useEffect, useState, useMemo } from "react";
+import { Calendar, ChevronLeft, ChevronRight, Trophy, Copy } from "lucide-react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -13,18 +13,19 @@ import { getSeasonsByClanQueryOptions, getLogsBySeasonQueryOptions } from "@/api
 
 interface PastSeasonsProps {
   clanTag: string;
+  clanName?: string;
 }
 
-export function PastSeasons({ clanTag }: PastSeasonsProps) {
+export function PastSeasons({ clanTag, clanName }: PastSeasonsProps) {
   const [selectedSeasonId, setSelectedSeasonId] = useState<string | undefined>(undefined);
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
   
-  const { data: seasons, isFetching: isFetchingSeasons } = useQuery({
+  const { data: seasons } = useQuery({
     ...getSeasonsByClanQueryOptions(clanTag),
   });
 
-  const { data: seasonLogs, isFetching: isFetchingLogs } = useQuery({
+  const { data: seasonLogs, } = useQuery({
     ...getLogsBySeasonQueryOptions(selectedSeasonId || "", clanTag),
     enabled: !!selectedSeasonId && !!seasons && seasons.length > 0,
   });
@@ -49,6 +50,46 @@ export function PastSeasons({ clanTag }: PastSeasonsProps) {
   }, [seasonLogs, currentPage]);
 
   const totalPages = seasonLogs ? Math.ceil(seasonLogs.players.length / pageSize) : 0;
+
+  const shareableText = useMemo(() => {
+    if (!seasonLogs || seasonLogs.players.length === 0 || !selectedSeasonId) return "";
+    
+    const clanTitle = clanName || "Clã";
+    const selectedSeason = seasons?.find(s => s.seasonId === selectedSeasonId);
+    const seasonName = selectedSeason?.seasonId || selectedSeasonId;
+    
+    let text = `🏆 TEMPORADAS PASSADAS - ${clanTitle}\n\n`;
+    text += `📅 Temporada: ${seasonName}\n\n`;
+    text += `📊 Ranking de Troféus:\n\n`;
+    
+    // Ordena por troféus (maior para menor)
+    const sortedPlayers = [...seasonLogs.players].sort((a, b) => b.trophies - a.trophies);
+    
+    sortedPlayers.forEach((player, index) => {
+      const rank = index + 1;
+      text += `${rank}. ${player.playerName}\n`;
+      text += `   ${player.playerTag}\n`;
+      text += `   🏆 ${player.trophies.toLocaleString()} troféus\n`;
+      text += `\n`;
+    });
+    
+    text += `\n📈 Estatísticas Gerais:\n`;
+    text += `   • Total de Jogadores: ${sortedPlayers.length}\n`;
+    const avgTrophies = sortedPlayers.reduce((sum, p) => sum + p.trophies, 0) / sortedPlayers.length;
+    const maxTrophies = Math.max(...sortedPlayers.map(p => p.trophies));
+    const minTrophies = Math.min(...sortedPlayers.map(p => p.trophies));
+    text += `   • Média de Troféus: ${avgTrophies.toFixed(0)}\n`;
+    text += `   • Maior Pontuação: ${maxTrophies.toLocaleString()}\n`;
+    text += `   • Menor Pontuação: ${minTrophies.toLocaleString()}\n`;
+    
+    return text;
+  }, [seasonLogs, selectedSeasonId, seasons, clanName]);
+
+  const copyToClipboard = useCallback(() => {
+    if (shareableText) {
+      navigator.clipboard.writeText(shareableText);
+    }
+  }, [shareableText]);
 
   if (!seasons || seasons.length === 0) {
     return (
@@ -119,12 +160,21 @@ export function PastSeasons({ clanTag }: PastSeasonsProps) {
       </div>
       <div className="bg-card border border-border rounded-xl p-4 sm:p-6 relative overflow-hidden">
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary/20 via-primary/40 to-primary/20" />
-        {(isFetchingSeasons || isFetchingLogs) && (
-          <div className="absolute top-3 right-3 z-10 flex items-center gap-2 text-xs text-muted-foreground">
-            <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-            <span>Carregando...</span>
-          </div>
-        )}
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg sm:text-xl font-semibold">Temporadas Passadas</h2>
+          {seasonLogs && seasonLogs.players.length > 0 && selectedSeasonId && (
+            <Button
+              onClick={copyToClipboard}
+              variant="outline"
+              size="sm"
+              className="gap-2"
+            >
+              <Copy className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">Copiar Ranking</span>
+              <span className="sm:hidden">Copiar</span>
+            </Button>
+          )}
+        </div>
         {seasonLogs && seasonLogs.players.length > 0 ? (
           <>
             <div className="space-y-1.5 mt-2">
