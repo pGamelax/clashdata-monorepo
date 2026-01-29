@@ -1,12 +1,25 @@
 import { useMemo } from "react";
-import { Clock, Star, Target, Trophy, TrendingUp, TrendingDown, Sword, Shield, Users } from "lucide-react";
+import { Clock, Star, Target, Trophy, TrendingUp, TrendingDown, Sword, Shield, Users, MessageSquare } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import type { CurrentWar, StarClosureInfo } from "./-current-war-types";
+import type { CurrentWar, StarClosureInfo, CurrentWarAttack } from "./-current-war-types";
 
 interface CurrentWarProps {
   war: CurrentWar;
   clanTag: string;
+}
+
+interface AttackMessage {
+  attackerTag: string;
+  attackerName: string;
+  defenderTag: string;
+  defenderName: string;
+  stars: number;
+  destructionPercentage: number;
+  order: number;
+  duration: number;
+  isUserClan: boolean;
+  clanName: string;
 }
 
 export function CurrentWar({ war, clanTag }: CurrentWarProps) {
@@ -109,6 +122,62 @@ export function CurrentWar({ war, clanTag }: CurrentWarProps) {
 
     return lastClosure;
   }, [war, userClan, opponentClan]);
+
+  // Coleta todos os ataques para o chat (meu clã e oponente)
+  const allAttackMessages = useMemo(() => {
+    if (!userClan || !hasOpponent || !opponentClan) return [];
+
+    const messages: AttackMessage[] = [];
+
+    // Ataques do meu clã
+    userClan.members.forEach((member) => {
+      if (member.attacks) {
+        member.attacks.forEach((attack) => {
+          const defender = opponentClan.members.find((m) => m.tag === attack.defenderTag);
+          if (defender) {
+            messages.push({
+              attackerTag: member.tag,
+              attackerName: member.name,
+              defenderTag: defender.tag,
+              defenderName: defender.name,
+              stars: attack.stars,
+              destructionPercentage: attack.destructionPercentage,
+              order: attack.order,
+              duration: attack.duration,
+              isUserClan: true,
+              clanName: userClan.name,
+            });
+          }
+        });
+      }
+    });
+
+    // Ataques do oponente
+    opponentClan.members.forEach((member) => {
+      if (member.attacks) {
+        member.attacks.forEach((attack) => {
+          const defender = userClan.members.find((m) => m.tag === attack.defenderTag);
+          if (defender) {
+            messages.push({
+              attackerTag: member.tag,
+              attackerName: member.name,
+              defenderTag: defender.tag,
+              defenderName: defender.name,
+              stars: attack.stars,
+              destructionPercentage: attack.destructionPercentage,
+              order: attack.order,
+              duration: attack.duration,
+              isUserClan: false,
+              clanName: opponentClan.name,
+            });
+          }
+        });
+      }
+    });
+
+    // Ordena por ordem de ataque
+    return messages.sort((a, b) => a.order - b.order);
+  }, [userClan, opponentClan, hasOpponent]);
 
   // Calcula estatísticas
   const stats = useMemo(() => {
@@ -234,13 +303,17 @@ export function CurrentWar({ war, clanTag }: CurrentWarProps) {
   
   const isPreparation = war.state === "preparation";
   const isInWar = war.state === "inWar";
-  const isEnded = isValidEndDate && endDate !== null && endDate.getTime() <= now.getTime();
+  const isWarEnded = war.state === "warEnded";
+  const isEnded = isWarEnded || (isValidEndDate && endDate !== null && endDate.getTime() <= now.getTime());
+  const showWarDetails = isInWar || isEnded || isWarEnded;
   
-  // Determina qual data usar para exibir
-  const displayDate = isPreparation && isValidPreparationDate && preparationStartDate !== null
+  // Determina qual data usar para exibir - sempre prioriza endDate quando disponível
+  const displayDate = isValidEndDate && endDate !== null
+    ? endDate
+    : isPreparation && isValidPreparationDate && preparationStartDate !== null
     ? preparationStartDate 
-    : isValidEndDate && endDate !== null
-    ? endDate 
+    : isValidStartDate && startDate !== null
+    ? startDate
     : null;
 
   return (
@@ -253,21 +326,34 @@ export function CurrentWar({ war, clanTag }: CurrentWarProps) {
             <div className="flex items-center gap-2">
               <Clock className="w-4 h-4" />
               <span>
-                {isPreparation && isValidPreparationDate && (
-                  <>Inicia em {formatDistanceToNow(preparationStartDate, { locale: ptBR, addSuffix: true })}</>
-                )}
-                {isInWar && displayDate && !isEnded && (
-                  <>
-                    Termina em {formatDistanceToNow(displayDate, { locale: ptBR, addSuffix: true })}
-                    {isValidEndDate && endDate && ` (${format(endDate, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })})`}
-                  </>
-                )}
-                {isInWar && !displayDate && !isEnded && "Data não disponível"}
-                {isEnded && isValidEndDate && endDate && (
-                  <>Finalizada em {format(endDate, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</>
-                )}
-                {isEnded && !isValidEndDate && "Guerra finalizada"}
-                {!isInWar && !isPreparation && !isEnded && !displayDate && "Data não disponível"}
+                {(() => {
+                  // Se a guerra terminou (warEnded ou data passou), sempre mostra a data final
+                  if ((isEnded || isWarEnded) && isValidEndDate && endDate) {
+                    return <>Finalizada em {format(endDate, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</>;
+                  }
+                  // Se está em guerra e tem data final válida
+                  if (isInWar && isValidEndDate && endDate) {
+                    return (
+                      <>
+                        Termina em {formatDistanceToNow(endDate, { locale: ptBR, addSuffix: true })}
+                        {` (${format(endDate, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })})`}
+                      </>
+                    );
+                  }
+                  // Se está em preparação
+                  if (isPreparation && isValidPreparationDate && preparationStartDate) {
+                    return <>Inicia em {formatDistanceToNow(preparationStartDate, { locale: ptBR, addSuffix: true })}</>;
+                  }
+                  // Fallback: se tem data final válida, mostra mesmo que não esteja em estado específico
+                  if (isValidEndDate && endDate) {
+                    return <>Finalizada em {format(endDate, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</>;
+                  }
+                  // Se tem data de início válida mas não tem final
+                  if (isValidStartDate && startDate) {
+                    return <>Inicia em {formatDistanceToNow(startDate, { locale: ptBR, addSuffix: true })}</>;
+                  }
+                  return "Data não disponível";
+                })()}
               </span>
             </div>
             <div className="flex items-center gap-2">
@@ -280,15 +366,21 @@ export function CurrentWar({ war, clanTag }: CurrentWarProps) {
                 <span className="text-yellow-500 font-medium">Preparação</span>
               </div>
             )}
-            {isInWar && (
+            {isInWar && !isEnded && (
               <div className="flex items-center gap-2">
                 <Sword className="w-4 h-4" />
                 <span className="text-red-500 font-medium">Em Guerra</span>
               </div>
             )}
+            {(isEnded || isWarEnded) && (
+              <div className="flex items-center gap-2">
+                <Trophy className="w-4 h-4" />
+                <span className="text-muted-foreground font-medium">Finalizada</span>
+              </div>
+            )}
           </div>
         </div>
-        {warStatus && isInWar && (
+        {warStatus && showWarDetails && (
           <div className={`flex items-center gap-2 px-4 py-2 rounded-lg ${
             warStatus.winner === "user"
               ? "bg-green-500/10 text-green-500"
@@ -303,11 +395,15 @@ export function CurrentWar({ war, clanTag }: CurrentWarProps) {
             ) : (
               <Target className="w-5 h-5" />
             )}
-            <span className="font-semibold">
+            <span className="font-semibold text-sm">
               {warStatus.winner === "user"
-                ? `Ganhandando por ${warStatus.margin} estrelas`
+                ? isEnded || isWarEnded
+                  ? `Ganhou por ${warStatus.margin} estrelas`
+                  : `Ganhandando por ${warStatus.margin} estrelas`
                 : warStatus.winner === "opponent"
-                ? `Perdendo por ${warStatus.margin} estrelas`
+                ? isEnded || isWarEnded
+                  ? `Perdeu por ${warStatus.margin} estrelas`
+                  : `Perdendo por ${warStatus.margin} estrelas`
                 : "Empate"}
             </span>
           </div>
@@ -315,62 +411,62 @@ export function CurrentWar({ war, clanTag }: CurrentWarProps) {
         {isPreparation && (
           <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-yellow-500/10 text-yellow-500">
             <Shield className="w-5 h-5" />
-            <span className="font-semibold">Fase de Preparação</span>
+            <span className="font-semibold text-sm">Fase de Preparação</span>
           </div>
         )}
       </div>
 
-      {/* Estatísticas principais - apenas durante a guerra */}
-      {isInWar && (
+      {/* Estatísticas principais - durante a guerra ou finalizada */}
+      {showWarDetails && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="bg-muted/50 rounded-lg p-4">
-          <div className="flex items-center gap-2 mb-1">
-            <Star className="w-4 h-4 text-yellow-500" />
-            <span className="text-sm text-muted-foreground">Estrelas</span>
-          </div>
-          <div className="text-2xl font-bold">{userClan.stars}</div>
-          {hasOpponent && (
-            <div className="text-xs text-muted-foreground mt-1">
-              vs {opponentClan?.stars || 0}
+          <div className="bg-muted/50 rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-1">
+              <Star className="w-4 h-4 text-yellow-500" />
+              <span className="text-sm text-muted-foreground">Estrelas</span>
             </div>
-          )}
-        </div>
-
-        <div className="bg-muted/50 rounded-lg p-4">
-          <div className="flex items-center gap-2 mb-1">
-            <Target className="w-4 h-4 text-red-500" />
-            <span className="text-sm text-muted-foreground">Destruição</span>
+            <div className="text-2xl font-bold">{userClan.stars}</div>
+            {hasOpponent && (
+              <div className="text-xs text-muted-foreground mt-1">
+                vs {opponentClan?.stars || 0}
+              </div>
+            )}
           </div>
-          <div className="text-2xl font-bold">{userClan.destructionPercentage}%</div>
-          {hasOpponent && (
-            <div className="text-xs text-muted-foreground mt-1">
-              vs {opponentClan?.destructionPercentage || 0}%
+
+          <div className="bg-muted/50 rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-1">
+              <Target className="w-4 h-4 text-red-500" />
+              <span className="text-sm text-muted-foreground">Destruição</span>
             </div>
-          )}
-        </div>
+            <div className="text-2xl font-bold">{userClan.destructionPercentage}%</div>
+            {hasOpponent && (
+              <div className="text-xs text-muted-foreground mt-1">
+                vs {opponentClan?.destructionPercentage || 0}%
+              </div>
+            )}
+          </div>
 
-        <div className="bg-muted/50 rounded-lg p-4">
-          <div className="flex items-center gap-2 mb-1">
-            <Sword className="w-4 h-4 text-blue-500" />
-            <span className="text-sm text-muted-foreground">Ataques</span>
+          <div className="bg-muted/50 rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-1">
+              <Sword className="w-4 h-4 text-blue-500" />
+              <span className="text-sm text-muted-foreground">Ataques</span>
+            </div>
+            <div className="text-2xl font-bold">{userClan.attacks}</div>
+            <div className="text-xs text-muted-foreground mt-1">
+              de {war.teamSize * war.attacksPerMember}
+            </div>
           </div>
-          <div className="text-2xl font-bold">{userClan.attacks}</div>
-          <div className="text-xs text-muted-foreground mt-1">
-            de {war.teamSize * war.attacksPerMember}
-          </div>
-        </div>
 
-        <div className="bg-muted/50 rounded-lg p-4">
-          <div className="flex items-center gap-2 mb-1">
-            <Clock className="w-4 h-4 text-purple-500" />
-            <span className="text-sm text-muted-foreground">Duração Média</span>
-          </div>
-          <div className="text-2xl font-bold">{stats?.avgDuration || "0.0"} min</div>
-          <div className="text-xs text-muted-foreground mt-1">
-            por ataque
+          <div className="bg-muted/50 rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-1">
+              <Clock className="w-4 h-4 text-purple-500" />
+              <span className="text-sm text-muted-foreground">Duração Média</span>
+            </div>
+            <div className="text-2xl font-bold">{stats?.avgDuration || "0.0"} min</div>
+            <div className="text-xs text-muted-foreground mt-1">
+              por ataque
+            </div>
           </div>
         </div>
-      </div>
       )}
 
       {/* Informações durante preparação */}
@@ -383,7 +479,7 @@ export function CurrentWar({ war, clanTag }: CurrentWarProps) {
               <p className="text-sm text-muted-foreground">
                 A guerra ainda não começou. Os membros estão se preparando para a batalha.
                 {isValidStartDate && (
-                  <> A guerra começará em {formatDistanceToNow(startDate, { locale: ptBR, addSuffix: true })}.</>
+                  <> A guerra começará em {formatDistanceToNow(startDate!, { locale: ptBR, addSuffix: true })}.</>
                 )}
               </p>
             </div>
@@ -391,8 +487,8 @@ export function CurrentWar({ war, clanTag }: CurrentWarProps) {
         </div>
       )}
 
-      {/* Informação sobre fechamento de estrelas - apenas durante a guerra */}
-      {isInWar && starClosureInfo && (
+      {/* Informação sobre fechamento de estrelas - durante a guerra ou finalizada */}
+      {showWarDetails && starClosureInfo && (
         <div className="bg-primary/10 border border-primary/20 rounded-lg p-4">
           <div className="flex items-start gap-3">
             <Trophy className="w-5 h-5 text-primary mt-0.5" />
@@ -409,8 +505,8 @@ export function CurrentWar({ war, clanTag }: CurrentWarProps) {
         </div>
       )}
 
-      {/* Possibilidade de vitória - apenas durante a guerra */}
-      {isInWar && victoryPossibility && (
+      {/* Possibilidade de vitória - durante a guerra ou finalizada */}
+      {showWarDetails && victoryPossibility && (
         <div className={`rounded-lg p-4 ${
           victoryPossibility.possible
             ? "bg-green-500/10 border border-green-500/20"
@@ -453,57 +549,119 @@ export function CurrentWar({ war, clanTag }: CurrentWarProps) {
         </div>
       )}
 
-      {/* Sequência de ataques - apenas durante a guerra */}
-      {isInWar && stats && stats.sortedAttacks.length > 0 && (
+      {/* Chat de Ataques - todos os ataques da guerra */}
+      {allAttackMessages.length > 0 && (
         <div>
-          <h3 className="text-lg font-semibold mb-4">Sequência de Ataques</h3>
-          <div className="space-y-2 max-h-96 overflow-y-auto">
-            {stats.sortedAttacks.map((attack) => {
-              const attacker = userClan.members.find((m) =>
-                m.attacks?.some((a) => a.order === attack.order)
-              );
-              const defender = hasOpponent && opponentClan 
-                ? opponentClan.members.find((m) => m.tag === attack.defenderTag)
-                : null;
+          <div className="flex items-center gap-2 mb-4">
+            <MessageSquare className="w-5 h-5" />
+            <h3 className="text-lg font-semibold">Ataques da Guerra</h3>
+          </div>
+          
+          {/* Desktop: Tabela */}
+          <div className="hidden md:block overflow-x-auto">
+            <div className="min-w-full">
+              <div className="bg-muted/30 rounded-lg overflow-hidden">
+                <div className="grid grid-cols-12 gap-4 p-3 border-b border-border/50 text-sm font-semibold text-muted-foreground">
+                  <div className="col-span-1">#</div>
+                  <div className="col-span-3">Atacante</div>
+                  <div className="col-span-3">Defensor</div>
+                  <div className="col-span-1 text-center">⭐</div>
+                  <div className="col-span-1 text-center">💥</div>
+                  <div className="col-span-1 text-center">⏱️</div>
+                  <div className="col-span-2 text-right">Clã</div>
+                </div>
+                <div className="max-h-[600px] overflow-y-auto">
+                  {allAttackMessages.map((msg) => (
+                    <div
+                      key={`${msg.attackerTag}-${msg.order}-${msg.isUserClan ? "user" : "opponent"}`}
+                      className={`grid grid-cols-12 gap-4 p-3 border-b border-border/30 last:border-0 hover:bg-muted/50 transition-colors ${
+                        msg.isUserClan ? "bg-primary/5" : ""
+                      }`}
+                    >
+                      <div className="col-span-1 text-sm font-medium text-muted-foreground">
+                        #{msg.order}
+                      </div>
+                      <div className="col-span-3 text-sm font-medium">
+                        {msg.attackerName}
+                      </div>
+                      <div className="col-span-3 text-sm">
+                        {msg.defenderName}
+                      </div>
+                      <div className="col-span-1 flex items-center justify-center gap-1">
+                        <Star className="w-4 h-4 text-yellow-500" />
+                        <span className="text-sm font-medium">{msg.stars}</span>
+                      </div>
+                      <div className="col-span-1 flex items-center justify-center gap-1">
+                        <Target className="w-4 h-4 text-red-500" />
+                        <span className="text-sm font-medium">{msg.destructionPercentage}%</span>
+                      </div>
+                      <div className="col-span-1 flex items-center justify-center gap-1">
+                        <Clock className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">{(msg.duration / 60).toFixed(1)}</span>
+                      </div>
+                      <div className={`col-span-2 text-right text-xs font-medium ${
+                        msg.isUserClan ? "text-primary" : "text-muted-foreground"
+                      }`}>
+                        {msg.clanName}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
 
-              return (
-                <div
-                  key={`${attack.attackerTag}-${attack.order}`}
-                  className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors"
-                >
-                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-muted text-xs font-medium">
-                    #{attack.order}
-                  </div>
+          {/* Mobile: Cards */}
+          <div className="md:hidden space-y-3 max-h-[600px] overflow-y-auto">
+            {allAttackMessages.map((msg) => (
+              <div
+                key={`${msg.attackerTag}-${msg.order}-${msg.isUserClan ? "user" : "opponent"}`}
+                className={`bg-muted/30 rounded-lg p-4 border ${
+                  msg.isUserClan 
+                    ? "border-primary/30 bg-primary/5" 
+                    : "border-border/30"
+                }`}
+              >
+                <div className="flex items-start justify-between mb-3">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-medium text-sm">
-                        {attacker?.name || "Desconhecido"}
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs font-medium text-muted-foreground">#{msg.order}</span>
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded ${
+                        msg.isUserClan 
+                          ? "bg-primary/20 text-primary" 
+                          : "bg-muted text-muted-foreground"
+                      }`}>
+                        {msg.clanName}
                       </span>
-                      <span className="text-muted-foreground">→</span>
-                      <span className="text-sm">{defender?.name || "Desconhecido"}</span>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-1">
-                      <Star className="w-4 h-4 text-yellow-500" />
-                      <span className="text-sm font-medium">{attack.stars}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Target className="w-4 h-4 text-red-500" />
-                      <span className="text-sm font-medium">{attack.destructionPercentage}%</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Clock className="w-4 h-4 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">{(attack.duration / 60).toFixed(1)} min</span>
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold">{msg.attackerName}</span>
+                        <span className="text-muted-foreground">→</span>
+                        <span className="text-sm">{msg.defenderName}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
-              );
-            })}
+                <div className="flex items-center gap-4 pt-2 border-t border-border/30">
+                  <div className="flex items-center gap-1">
+                    <Star className="w-4 h-4 text-yellow-500" />
+                    <span className="text-sm font-medium">{msg.stars}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Target className="w-4 h-4 text-red-500" />
+                    <span className="text-sm font-medium">{msg.destructionPercentage}%</span>
+                  </div>
+                  <div className="flex items-center gap-1 ml-auto">
+                    <Clock className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">{(msg.duration / 60).toFixed(1)} min</span>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
     </div>
   );
 }
-
