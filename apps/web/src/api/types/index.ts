@@ -248,6 +248,11 @@ export interface AdminClan {
   name: string;
   tag: string;
   userCount?: number;
+  plan?: {
+    isActive: boolean;
+    activatedAt: string | null;
+    activatedBy: string | null;
+  } | null;
 }
 
 export interface AdminUserClan {

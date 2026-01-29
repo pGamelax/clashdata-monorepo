@@ -74,24 +74,28 @@ export function handleClanError(
 
   // 403: Clã não pertence ao usuário OU não possui assinatura ativa
   if (status === 403) {
-    // Verifica se a mensagem indica problema de assinatura
-    const isSubscriptionError =
+    // Verifica se a mensagem indica problema de plano/assinatura
+    const isPlanError =
+      message?.toLowerCase().includes("plano") ||
+      message?.toLowerCase().includes("plan") ||
       message?.toLowerCase().includes("assinatura") ||
       message?.toLowerCase().includes("subscription") ||
-      message?.toLowerCase().includes("assinatura expirada") ||
-      message?.toLowerCase().includes("subscription expired");
+      message?.toLowerCase().includes("não está ativo") ||
+      message?.toLowerCase().includes("not active") ||
+      message?.toLowerCase().includes("não está ativa") ||
+      message?.toLowerCase().includes("administrador");
 
-    if (isSubscriptionError) {
+    if (isPlanError) {
       return {
         type: ClanErrorType.NO_SUBSCRIPTION,
         message:
           message ||
-          "Este clã não possui uma assinatura ativa. Renove sua assinatura para continuar acessando.",
+          "O plano do seu clã expirou ou está inativo. Entre em contato com o administrador para ativar o plano.",
         redirectTo: "/clans",
         redirectSearch: {
           error:
             message ||
-            "Este clã não possui uma assinatura ativa. Renove sua assinatura para continuar acessando.",
+            "O plano do seu clã expirou ou está inativo. Entre em contato com o administrador para ativar o plano.",
           clanTag: clanTag?.replace(/#|%23/g, "").trim(),
         },
       };

@@ -3,6 +3,7 @@ import { betterAuthPlugin } from "@/http/plugins/better-auth";
 import { Elysia } from "elysia";
 import { AdminModel } from "./model";
 import { AdminServiceImpl } from "./service";
+import { auth } from "@/auth";
 
 // Helper para normalizar tags (adiciona # se não tiver)
 function normalizeTag(tag: string): string {
@@ -308,6 +309,71 @@ export const admin = new Elysia({ prefix: "/admin" })
         200: AdminModel.searchClanResponse,
         400: AdminModel.errorResponse,
         403: AdminModel.errorResponse,
+        404: AdminModel.errorResponse,
+      },
+    },
+  )
+  .post(
+    "/clan-plan/toggle",
+    async ({ body, request, set }) => {
+      // Obtém a sessão diretamente
+      const session = await auth.api.getSession({ headers: request.headers });
+      if (!session || session.user.role !== "admin") {
+        set.status = 403;
+        return { message: "Acesso negado: apenas administradores podem executar esta ação" };
+      }
+
+      const { clanTag, isActive } = body;
+      const normalizedTag = normalizeTag(clanTag);
+
+      const adminService = new AdminServiceImpl();
+      const result = await adminService.toggleClanPlan(
+        normalizedTag,
+        isActive,
+        session.user.id,
+      );
+
+      return result;
+    },
+    {
+      admin: true,
+      detail: {
+        summary: "Ativar/Desativar plano de um clã",
+        description:
+          "Ativa ou desativa o plano de assinatura de um clã. Apenas administradores podem executar esta ação.",
+        tags: ["Admin"],
+      },
+      body: AdminModel.toggleClanPlanBody,
+      response: {
+        200: AdminModel.toggleClanPlanResponse,
+        400: AdminModel.errorResponse,
+        403: AdminModel.errorResponse,
+        404: AdminModel.errorResponse,
+      },
+    },
+  )
+  .get(
+    "/clan-plan",
+    async ({ query }) => {
+      const { clanTag } = query;
+      const normalizedTag = normalizeTag(clanTag);
+
+      const adminService = new AdminServiceImpl();
+      const plan = await adminService.getClanPlan(normalizedTag);
+
+      return plan;
+    },
+    {
+      admin: true,
+      detail: {
+        summary: "Obter plano de um clã",
+        description:
+          "Retorna informações sobre o plano de assinatura de um clã. Retorna null se o clã não tiver plano cadastrado.",
+        tags: ["Admin"],
+      },
+      query: AdminModel.getClanPlanQuery,
+      response: {
+        200: AdminModel.clanPlanResponse.nullable(),
         404: AdminModel.errorResponse,
       },
     },

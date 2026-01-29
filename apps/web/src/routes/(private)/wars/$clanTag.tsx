@@ -107,6 +107,7 @@ function RouteComponent() {
           isFetchingFull={isFetchingFull}
           currentClanMemberTags={currentClanMemberTags}
           clanName={clanStats.name}
+          clanTag={clanTag}
         />
       </div>
     </div>

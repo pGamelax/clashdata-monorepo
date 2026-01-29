@@ -90,6 +90,7 @@ model Clan {
   updatedAt DateTime   @updatedAt @map("updated_at")
 
   userClans UserClan[]
+  plan      ClanPlan?
 
   @@index([tag]) // Índice para buscas por tag
   @@map("clans")
@@ -175,4 +176,20 @@ model PlayerSeason {
   @@index([configId])
   @@unique([playerTag, seasonId, configId]) // Um jogador pode ter o mesmo seasonId em diferentes configs
   @@map("player_seasons")
+}
+
+model ClanPlan {
+  id        String   @id @default(uuid())
+  clanId    String   @unique @map("clan_id")
+  isActive  Boolean  @default(false) @map("is_active")
+  activatedAt DateTime? @map("activated_at")
+  activatedBy String? @map("activated_by") // ID do admin que ativou
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  clan      Clan     @relation(fields: [clanId], references: [id], onDelete: Cascade)
+
+  @@index([clanId])
+  @@index([isActive])
+  @@map("clan_plans")
 }

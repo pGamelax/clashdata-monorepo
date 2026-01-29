@@ -22,6 +22,12 @@ export abstract class AdminService {
   ): Promise<AdminModel.RevokeClanAccessResponse>;
   abstract deleteClan(clanTag: string): Promise<AdminModel.DeleteClanResponse>;
   abstract searchClanFromAPI(clanTag: string): Promise<AdminModel.SearchClanResponse>;
+  abstract toggleClanPlan(
+    clanTag: string,
+    isActive: boolean,
+    activatedBy: string,
+  ): Promise<AdminModel.ToggleClanPlanResponse>;
+  abstract getClanPlan(clanTag: string): Promise<AdminModel.ClanPlanResponse | null>;
 }
 
 export class AdminServiceImpl extends AdminService {
@@ -39,6 +45,11 @@ export class AdminServiceImpl extends AdminService {
       name: clan.name,
       tag: clan.tag,
       userCount: clan.userCount,
+      plan: clan.plan ? {
+        isActive: clan.plan.isActive,
+        activatedAt: clan.plan.activatedAt?.toISOString() || null,
+        activatedBy: clan.plan.activatedBy || null,
+      } : null,
     }));
   }
 
@@ -268,6 +279,107 @@ export class AdminServiceImpl extends AdminService {
         throw new BadRequest("Erro ao buscar clã na API da Supercell");
       }
       throw error;
+    }
+  }
+
+  async toggleClanPlan(
+    clanTag: string,
+    isActive: boolean,
+    activatedBy: string,
+  ): Promise<AdminModel.ToggleClanPlanResponse> {
+    try {
+      // Normaliza a tag do clã (adiciona # se não tiver)
+      const normalizedTag = clanTag.startsWith("#") ? clanTag : `#${clanTag}`;
+
+      // Verifica se o clã existe
+      const clan = await this.repository.findClanByTag(normalizedTag);
+      if (!clan) {
+        throw new NotFound("Clã não encontrado");
+      }
+
+      // Verifica se o modelo está disponível
+      if (!prisma.clanPlan) {
+        throw new BadRequest("Modelo de plano não disponível. Verifique se o Prisma Client foi regenerado.");
+      }
+
+      // Busca ou cria o plano usando upsert
+      const plan = await prisma.clanPlan.upsert({
+        where: { clanId: clan.id },
+        create: {
+          clanId: clan.id,
+          isActive,
+          activatedAt: isActive ? new Date() : null,
+          activatedBy: isActive ? activatedBy : null,
+        },
+        update: {
+          isActive,
+          activatedAt: isActive ? new Date() : null,
+          activatedBy: isActive ? activatedBy : null,
+        },
+      });
+
+      return {
+        message: isActive ? "Plano ativado com sucesso" : "Plano desativado com sucesso",
+        plan: {
+          id: plan.id,
+          clanId: plan.clanId,
+          isActive: plan.isActive,
+          activatedAt: plan.activatedAt?.toISOString() || null,
+          activatedBy: plan.activatedBy || null,
+        },
+      };
+    } catch (error: any) {
+      // Re-lança erros conhecidos
+      if (error instanceof NotFound || error instanceof BadRequest) {
+        throw error;
+      }
+      
+      // Se for erro do Prisma, trata especificamente
+      if (error.code === "P2002") {
+        throw new BadRequest("Plano já existe para este clã");
+      }
+      
+      // Se for erro de modelo não encontrado (Prisma não gerado)
+      if (error.message?.includes("clanPlan") || error.message?.includes("ClanPlan")) {
+        throw new BadRequest("Erro interno: modelo de plano não encontrado. Verifique se o Prisma Client foi regenerado.");
+      }
+      
+      throw new BadRequest(`Erro ao alterar plano do clã: ${error.message || "Erro desconhecido"}`);
+    }
+  }
+
+  async getClanPlan(clanTag: string): Promise<AdminModel.ClanPlanResponse | null> {
+    try {
+      // Normaliza a tag do clã (adiciona # se não tiver)
+      const normalizedTag = clanTag.startsWith("#") ? clanTag : `#${clanTag}`;
+
+      // Verifica se o clã existe
+      const clan = await this.repository.findClanByTag(normalizedTag);
+      if (!clan) {
+        throw new NotFound("Clã não encontrado");
+      }
+
+      // Busca o plano
+      const plan = await prisma.clanPlan.findUnique({
+        where: { clanId: clan.id },
+      });
+
+      if (!plan) {
+        return null;
+      }
+
+      return {
+        id: plan.id,
+        clanId: plan.clanId,
+        isActive: plan.isActive,
+        activatedAt: plan.activatedAt?.toISOString() || null,
+        activatedBy: plan.activatedBy || null,
+      };
+    } catch (error: any) {
+      if (error instanceof NotFound) {
+        throw error;
+      }
+      throw new BadRequest(`Erro ao buscar plano do clã: ${error.message || "Erro desconhecido"}`);
     }
   }
 }

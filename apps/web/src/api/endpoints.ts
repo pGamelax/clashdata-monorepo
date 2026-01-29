@@ -26,6 +26,8 @@ export const endpoints = {
       if (limit) params.append("limit", limit.toString());
       return `${API_BASE_URL}/dashboard/data?${params.toString()}`;
     },
+    getCurrentWar: (clanTag: string) =>
+      `${API_BASE_URL}/dashboard/current-war?clanTag=${encodeURIComponent(clanTag)}`,
   },
 
   // Players
@@ -53,6 +55,9 @@ export const endpoints = {
     createClan: `${API_BASE_URL}/admin/create-clan`,
     addClanToUser: `${API_BASE_URL}/admin/add-clan-to-user`,
     revokeClanAccess: `${API_BASE_URL}/admin/revoke-clan-access`,
+    toggleClanPlan: `${API_BASE_URL}/admin/clan-plan/toggle`,
+    getClanPlan: (clanTag: string) =>
+      `${API_BASE_URL}/admin/clan-plan?clanTag=${encodeURIComponent(clanTag)}`,
   },
 
   // Seasons

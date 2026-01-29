@@ -65,4 +65,16 @@ export namespace DashboardModel {
   });
 
   export type ErrorResponse = z.infer<typeof errorResponse>;
+
+  // Query para obter guerra atual
+  export const getCurrentWarQuery = z.object({
+    clanTag: z.string().min(1, "Tag do clan é obrigatória"),
+  });
+
+  export type GetCurrentWarQuery = z.infer<typeof getCurrentWarQuery>;
+
+  // Resposta da guerra atual (pode ser null se não houver guerra)
+  export const getCurrentWarResponse = z.any().nullable();
+
+  export type GetCurrentWarResponse = z.infer<typeof getCurrentWarResponse>;
 }

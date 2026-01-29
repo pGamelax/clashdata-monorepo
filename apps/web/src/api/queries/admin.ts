@@ -97,3 +97,37 @@ export const revokeClanAccess = async (
   return response as RevokeClanAccessResponse;
 };
 
+/**
+ * Função para ativar/desativar plano de um clã (admin only)
+ */
+export const toggleClanPlan = async (
+  clanTag: string,
+  isActive: boolean,
+): Promise<{ message: string; plan: { id: string; clanId: string; isActive: boolean; activatedAt: string | null; activatedBy: string | null } }> => {
+  const cleanTag = normalizeTag(clanTag);
+  const response = await apiFetch(endpoints.admin.toggleClanPlan, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      clanTag: cleanTag,
+      isActive,
+    }),
+  });
+  return response as { message: string; plan: { id: string; clanId: string; isActive: boolean; activatedAt: string | null; activatedBy: string | null } };
+};
+
+/**
+ * Query options para obter plano de um clã (admin only)
+ */
+export const getClanPlanQueryOptions = (clanTag: string) =>
+  queryOptions({
+    queryKey: ["admin-clan-plan", clanTag],
+    queryFn: async () => {
+      const cleanTag = normalizeTag(clanTag);
+      const response = await apiFetch(endpoints.admin.getClanPlan(cleanTag));
+      return response as { id: string; clanId: string; isActive: boolean; activatedAt: string | null; activatedBy: string | null } | null;
+    },
+  });
+

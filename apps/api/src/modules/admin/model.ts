@@ -6,6 +6,11 @@ export namespace AdminModel {
     name: z.string(),
     tag: z.string(),
     userCount: z.number().optional(),
+    plan: z.object({
+      isActive: z.boolean(),
+      activatedAt: z.string().nullable(),
+      activatedBy: z.string().nullable(),
+    }).nullable().optional(),
   });
 
   export type ClanResponse = z.infer<typeof clanResponse>;
@@ -128,5 +133,43 @@ export namespace AdminModel {
   });
 
   export type SearchClanResponse = z.infer<typeof searchClanResponse>;
+
+  // Schema para ativar/desativar plano
+  export const toggleClanPlanBody = z.object({
+    clanTag: z.string().min(1, "Tag do clã é obrigatória"),
+    isActive: z.boolean(),
+  });
+
+  export type ToggleClanPlanBody = z.infer<typeof toggleClanPlanBody>;
+
+  export const toggleClanPlanResponse = z.object({
+    message: z.string(),
+    plan: z.object({
+      id: z.string(),
+      clanId: z.string(),
+      isActive: z.boolean(),
+      activatedAt: z.string().nullable(),
+      activatedBy: z.string().nullable(),
+    }),
+  });
+
+  export type ToggleClanPlanResponse = z.infer<typeof toggleClanPlanResponse>;
+
+  // Schema para obter plano do clã
+  export const getClanPlanQuery = z.object({
+    clanTag: z.string().min(1, "Tag do clã é obrigatória"),
+  });
+
+  export type GetClanPlanQuery = z.infer<typeof getClanPlanQuery>;
+
+  export const clanPlanResponse = z.object({
+    id: z.string(),
+    clanId: z.string(),
+    isActive: z.boolean(),
+    activatedAt: z.string().nullable(),
+    activatedBy: z.string().nullable(),
+  });
+
+  export type ClanPlanResponse = z.infer<typeof clanPlanResponse>;
 }
 

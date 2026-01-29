@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChartSpline, Shield, Trophy, Loader2 } from "lucide-react";
+import { ChartSpline, Shield, Trophy, Loader2, Sword } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DataTable } from "./-data-table";
 import { CWLSelector } from "./-cwl-selector";
@@ -13,6 +13,9 @@ import {
 import type { PlayerStats } from "./-types";
 import { columns } from "./-columns";
 import { cwlColumns } from "./-cwl-columns";
+import { CurrentWar } from "./-current-war";
+import { useQuery } from "@tanstack/react-query";
+import { getCurrentWarQueryOptions } from "@/api/queries/wars";
 
 interface PerformanceSectionProps {
   players: PlayerStats[];
@@ -20,6 +23,7 @@ interface PerformanceSectionProps {
   isFetchingFull: boolean;
   currentClanMemberTags: string[];
   clanName: string;
+  clanTag: string;
 }
 
 export function PerformanceSection({
@@ -28,8 +32,16 @@ export function PerformanceSection({
   isFetchingFull,
   currentClanMemberTags,
   clanName,
+  clanTag,
 }: PerformanceSectionProps) {
   const [isCWLSelectorOpen, setIsCWLSelectorOpen] = useState(false);
+
+  // Busca guerra atual
+  const { data: currentWar } = useQuery(getCurrentWarQueryOptions(clanTag));
+  const hasCurrentWar = currentWar && (currentWar.state === "inWar" || currentWar.state === "preparation");
+  
+  // Define a tab padrão: se houver guerra atual, mostra ela primeiro, senão mostra normal
+  const defaultTab = hasCurrentWar ? "current" : "normal";
 
   return (
     <div className="space-y-3 sm:space-y-4">
@@ -52,8 +64,15 @@ export function PerformanceSection({
         </Button>
       </div>
 
-      <Tabs defaultValue="normal" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 mb-4">
+      <Tabs defaultValue={defaultTab} className="w-full">
+        <TabsList className={`grid w-full mb-4 ${hasCurrentWar ? 'grid-cols-3' : 'grid-cols-2'}`}>
+          {hasCurrentWar && (
+            <TabsTrigger value="current" className="flex items-center gap-2">
+              <Sword className="w-4 h-4" />
+              <span className="hidden sm:inline">Guerra Atual</span>
+              <span className="sm:hidden">Atual</span>
+            </TabsTrigger>
+          )}
           <TabsTrigger value="normal" className="flex items-center gap-2">
             <ChartSpline className="w-4 h-4" />
             <span className="hidden sm:inline">Guerras Normais</span>
@@ -65,6 +84,12 @@ export function PerformanceSection({
             <span className="sm:hidden">CWL</span>
           </TabsTrigger>
         </TabsList>
+
+        {hasCurrentWar && (
+          <TabsContent value="current" className="space-y-3">
+            <CurrentWar war={currentWar} clanTag={clanTag} />
+          </TabsContent>
+        )}
 
         <TabsContent value="normal" className="space-y-3">
           <div className="bg-card border border-border rounded-xl p-4 sm:p-5 lg:p-6">

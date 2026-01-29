@@ -18,4 +18,5 @@ export * from "./queries/players";
 export * from "./queries/legend-logs";
 export * from "./queries/admin";
 export * from "./queries/seasons";
+export * from "./queries/wars";
 

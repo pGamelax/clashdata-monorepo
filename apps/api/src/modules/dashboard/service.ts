@@ -1,3 +1,4 @@
+import { env } from "@/env";
 import { prisma } from "@/lib/prisma";
 import { verifyClanOwnership } from "@/utils/verify-clan-ownership";
 
@@ -149,5 +150,45 @@ export class DashboardService {
       players: Array.from(playerMap.values()),
       cwlPlayers: Array.from(cwlPlayerMap.values()),
     };
+  }
+
+  async getCurrentWar(params: { clanTag: string; userId: string }) {
+    const { clanTag, userId } = params;
+
+    // Verifica se o clan pertence ao usuário logado
+    await verifyClanOwnership(clanTag, userId);
+
+    try {
+      // Busca guerra atual da API externa
+      const response = await fetch(
+        `https://api.clashofclans.com/v1/clans/${encodeURIComponent(clanTag)}/currentwar`,
+        { headers: { Authorization: `Bearer ${env.TOKEN_COC}` } },
+      );
+
+      if (!response.ok) {
+        // Se não há guerra atual, retorna null
+        if (response.status === 404) {
+          console.log(`Nenhuma guerra atual encontrada para o clã ${clanTag}`);
+          return null;
+        }
+        const errorText = await response.text();
+        console.error(`Erro ao buscar guerra atual: ${response.status} - ${errorText}`);
+        throw new Error(`Failed to fetch current war: ${response.statusText}`);
+      }
+
+      const warData = await response.json();
+      console.log(`Guerra atual encontrada para o clã ${clanTag}:`, {
+        state: warData?.state,
+        hasClan: !!warData?.clan,
+        hasOpponent: !!warData?.opponent,
+        clanTag: warData?.clan?.tag,
+        opponentTag: warData?.opponent?.tag,
+      });
+      return warData;
+    } catch (error) {
+      console.error(`Erro ao buscar guerra atual para ${clanTag}:`, error);
+      // Retorna null em caso de erro (melhor que quebrar a aplicação)
+      return null;
+    }
   }
 }

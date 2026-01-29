@@ -12,6 +12,7 @@ export class AdminRepository {
             userId: true,
           },
         },
+        plan: true,
       },
       orderBy: {
         createdAt: "desc",
@@ -23,6 +24,11 @@ export class AdminRepository {
       name: clan.name,
       tag: clan.tag,
       userCount: clan.userClans.length,
+      plan: clan.plan ? {
+        isActive: clan.plan.isActive,
+        activatedAt: clan.plan.activatedAt,
+        activatedBy: clan.plan.activatedBy,
+      } : null,
       createdAt: clan.createdAt,
       updatedAt: clan.updatedAt,
     }));

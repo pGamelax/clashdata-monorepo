@@ -58,9 +58,12 @@ function RouteComponent() {
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6 lg:py-8 space-y-4 sm:space-y-6">
         {/* Error Message */}
         {errorMessage && (
-          <div className="flex items-center gap-2 text-destructive bg-destructive/10 border border-destructive/20 p-3 rounded-lg">
-            <XCircle size={16} className="flex-shrink-0" />
-            <span className="text-sm font-medium">{errorMessage}</span>
+          <div className="flex items-start gap-3 text-destructive bg-destructive/10 border border-destructive/20 p-4 rounded-lg">
+            <XCircle size={20} className="flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-medium mb-1">Plano Inativo</p>
+              <p className="text-sm">{errorMessage}</p>
+            </div>
           </div>
         )}
 

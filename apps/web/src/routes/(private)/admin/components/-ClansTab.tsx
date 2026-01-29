@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Shield, Search, Trash2, Eye, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import {
   Table,
   TableBody,
@@ -19,8 +20,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { ApiError, revokeClanAccess } from "@/api";
+import { ApiError, revokeClanAccess, toggleClanPlan } from "@/api";
 import { SelectClanDialog } from "./SelectClanDialog";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 interface ClansTabProps {
   allClans: any[];
@@ -43,12 +45,47 @@ export function ClansTab({
   showToast,
   getClanUsers,
 }: ClansTabProps) {
+  const queryClient = useQueryClient();
   const [isDeleteClanDialogOpen, setIsDeleteClanDialogOpen] = useState(false);
   const [selectedClanForDelete, setSelectedClanForDelete] = useState<any>(null);
   const [selectedClanForView, setSelectedClanForView] = useState<any>(null);
   const [isRevokeDialogOpen, setIsRevokeDialogOpen] = useState(false);
   const [selectedUserForRevoke, setSelectedUserForRevoke] = useState<any>(null);
   const [selectedClanTagForRevoke, setSelectedClanTagForRevoke] = useState("");
+
+  const togglePlanMutation = useMutation({
+    mutationFn: ({ clanTag, isActive }: { clanTag: string; isActive: boolean }) =>
+      toggleClanPlan(clanTag, isActive),
+    onSuccess: () => {
+      // Invalida e refaz a query para garantir que os dados estão atualizados
+      queryClient.invalidateQueries({ queryKey: ["admin-all-clans"] });
+      refetchClans();
+    },
+  });
+
+  const handleTogglePlan = async (clanTag: string, currentStatus: boolean) => {
+    try {
+      const newStatus = !currentStatus;
+      
+      await togglePlanMutation.mutateAsync({
+        clanTag,
+        isActive: newStatus,
+      });
+      
+      showToast("success", `Plano ${newStatus ? "ativado" : "desativado"} com sucesso`);
+      
+      // Força uma nova busca após um pequeno delay para garantir que o backend atualizou
+      setTimeout(() => {
+        refetchClans();
+      }, 500);
+    } catch (error: unknown) {
+      if (error instanceof ApiError) {
+        showToast("error", error.message || "Erro ao alterar status do plano");
+      } else {
+        showToast("error", "Erro ao alterar status do plano");
+      }
+    }
+  };
 
   const filteredClans = allClans?.filter((clan: any) =>
     clan.name?.toLowerCase().includes(searchClan.toLowerCase()) ||
@@ -153,13 +190,14 @@ export function ClansTab({
                 <TableHead className="min-w-[100px] sm:min-w-[120px] text-xs sm:text-sm">Nome</TableHead>
                 <TableHead className="min-w-[80px] sm:min-w-[100px] text-xs sm:text-sm">Tag</TableHead>
                 <TableHead className="min-w-[70px] sm:min-w-[80px] text-xs sm:text-sm">Usuários</TableHead>
+                <TableHead className="min-w-[100px] sm:min-w-[120px] text-xs sm:text-sm">Plano</TableHead>
                 <TableHead className="text-right min-w-[80px] sm:min-w-[100px] text-xs sm:text-sm">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredClans.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                     Nenhum clã encontrado
                   </TableCell>
                 </TableRow>
@@ -249,6 +287,18 @@ export function ClansTab({
                               </DialogContent>
                             </Dialog>
                           )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <Switch
+                            checked={clan.plan?.isActive === true}
+                            onCheckedChange={() => handleTogglePlan(clan.tag, clan.plan?.isActive === true)}
+                            disabled={togglePlanMutation.isPending}
+                          />
+                          <span className={`text-xs ${clan.plan?.isActive === true ? "text-green-500 font-medium" : "text-muted-foreground"}`}>
+                            {clan.plan?.isActive === true ? "Ativo" : "Inativo"}
+                          </span>
                         </div>
                       </TableCell>
                       <TableCell className="text-right">

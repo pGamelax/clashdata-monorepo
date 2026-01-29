@@ -80,4 +80,48 @@ export const dashboard = new Elysia({ prefix: "/dashboard" })
         403: DashboardModel.errorResponse,
       },
     },
+  )
+  .get(
+    "/current-war",
+    async ({ query, user }) => {
+      const { clanTag } = query;
+      const normalizedTag = normalizeTag(clanTag);
+      
+      console.log(`[CurrentWar] Buscando guerra atual para clã: ${clanTag} -> ${normalizedTag}`);
+
+      const currentWar = await dashboardService.getCurrentWar({
+        clanTag: normalizedTag,
+        userId: user.id,
+      });
+
+      console.log(`[CurrentWar] Resposta:`, currentWar ? `Guerra encontrada (state: ${currentWar.state})` : 'Nenhuma guerra encontrada');
+      
+      return currentWar;
+    },
+    {
+      auth: true,
+      detail: {
+        summary: "Obter guerra atual do clã",
+        description:
+          "Retorna dados da guerra atual em andamento do clã. " +
+          "Retorna null se não houver guerra em andamento. " +
+          "Apenas o dono do clan pode acessar essas informações.",
+        tags: ["Dashboard"],
+        examples: [
+          {
+            summary: "Exemplo de requisição",
+            description: "Buscar guerra atual de um clan",
+            value: {
+              clanTag: "#CLAN123",
+            },
+          },
+        ],
+      },
+      query: DashboardModel.getCurrentWarQuery,
+      response: {
+        200: DashboardModel.getCurrentWarResponse,
+        400: DashboardModel.errorResponse,
+        403: DashboardModel.errorResponse,
+      },
+    },
   );
