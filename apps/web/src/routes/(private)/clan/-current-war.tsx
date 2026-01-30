@@ -321,7 +321,9 @@ export function CurrentWar({ war, clanTag }: CurrentWarProps) {
       {/* Cabeçalho */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-xl font-semibold mb-2">Guerra Atual</h2>
+          <h2 className="text-xl font-semibold mb-2">
+            {isWarEnded || isEnded ? "Guerra Finalizada" : "Guerra Atual"}
+          </h2>
           <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
             <div className="flex items-center gap-2">
               <Clock className="w-4 h-4" />

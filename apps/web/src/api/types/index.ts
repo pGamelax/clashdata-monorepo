@@ -36,15 +36,40 @@ export interface ClanInfo {
   name: string;
   tag: string;
   description: string;
+  type?: string;
+  location?: {
+    id: number;
+    name: string;
+    isCountry: boolean;
+    countryCode: string;
+  };
+  isFamilyFriendly?: boolean;
   badgeUrls: {
     small: string;
     medium: string;
     large: string;
   };
+  clanLevel?: number;
+  clanPoints?: number;
+  clanBuilderBasePoints?: number;
+  clanCapitalPoints?: number;
+  capitalLeague?: {
+    id: number;
+    name: string;
+  };
+  requiredTrophies?: number;
+  warFrequency?: string;
+  warWinStreak?: number;
   totalWars: number;
   warWins: number;
   warTies: number;
   warLosses: number;
+  isWarLogPublic?: boolean;
+  warLeague?: {
+    id: number;
+    name: string;
+  };
+  members?: number;
 }
 
 export interface CreateClanBody {

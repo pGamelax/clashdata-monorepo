@@ -25,6 +25,9 @@ export const getClanInfoQueryOptions = (clanTag: string) =>
   queryOptions({
     queryKey: ["clan-info", clanTag],
     queryFn: async () => {
+      if (!clanTag || clanTag.trim() === "") {
+        throw new Error("Tag do clan é obrigatória");
+      }
       const cleanTag = normalizeTag(clanTag);
       const response = await apiFetch(endpoints.clans.getClanInfo(cleanTag));
       return response as ClanInfo;

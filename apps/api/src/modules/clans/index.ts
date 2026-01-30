@@ -100,7 +100,13 @@ export const clans = new Elysia({ prefix: "/clans" })
     "/clan-info",
     async ({ query, user }) => {
       const { clanTag } = query;
-      const normalizedTag = normalizeTag(clanTag);
+      
+      // Validação manual antes da normalização
+      if (!clanTag || typeof clanTag !== "string" || clanTag.trim() === "") {
+        throw new Error("Tag do clan é obrigatória");
+      }
+      
+      const normalizedTag = normalizeTag(clanTag.trim());
     
       // Verifica se o clan pertence ao usuário logado
       await verifyClanOwnership(normalizedTag, user.id);

@@ -17,10 +17,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Percent,
-  Search,
   Star,
   ChevronDown,
   ChevronUp,
@@ -30,7 +28,6 @@ import {
 } from "lucide-react";
 import type { DateRange } from "react-day-picker";
 import { isWithinInterval, parseISO } from "date-fns";
-import { DatePickerWithRange } from "@/components/data-picker";
 import type { PlayerStats, WarAction, ProcessedPlayer } from "./-types";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -38,6 +35,7 @@ import { Label } from "@/components/ui/label";
 interface DataTableProps {
   columns: ColumnDef<ProcessedPlayer>[];
   data: PlayerStats[];
+  hideDateFilters?: boolean; // Para CWL, não mostra filtros de data/mês
 }
 
 // Função para obter os 4 meses relativos ao mês atual
@@ -61,8 +59,7 @@ function getLastFourMonths(): Array<{ month: number; year: number; name: string 
   return months;
 }
 
-export function DataTable({ columns, data }: DataTableProps) {
-  const [globalFilter, setGlobalFilter] = useState("");
+export function DataTable({ columns, data, hideDateFilters = false }: DataTableProps) {
   const [date, setDate] = useState<DateRange | undefined>();
   const availableMonths = useMemo(() => getLastFourMonths(), []);
   const [selectedMonths, setSelectedMonths] = useState<Set<number>>(
@@ -91,7 +88,10 @@ export function DataTable({ columns, data }: DataTableProps) {
 
     let limitedDates: Set<string>;
     
-    if (date?.from && date?.to) {
+    // Se hideDateFilters está ativo (CWL), não aplica filtros de data
+    if (hideDateFilters) {
+      limitedDates = new Set(sortedDates);
+    } else if (date?.from && date?.to) {
       limitedDates = new Set(sortedDates);
     } else {
       // Filtra por meses selecionados
@@ -211,8 +211,6 @@ export function DataTable({ columns, data }: DataTableProps) {
   const table = useReactTable({
     data: dynamicData,
     columns,
-    state: { globalFilter },
-    onGlobalFilterChange: setGlobalFilter,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -221,99 +219,77 @@ export function DataTable({ columns, data }: DataTableProps) {
 
   return (
     <div className="space-y-4 w-full max-w-[100vw] overflow-hidden px-1 sm:px-0">
-      <div className="flex flex-col gap-4 px-2 lg:flex-row lg:justify-between lg:items-center">
-        <div className="flex flex-col md:flex-row gap-3 items-center">
-          <div className="relative w-full md:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar jogador..."
-              value={globalFilter}
-              onChange={(e) => setGlobalFilter(e.target.value)}
-              className="pl-9 h-11 rounded-xl border-2 border-border/50 bg-muted/30 backdrop-blur-sm focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-0 transition-all"
-            />
-          </div>
+      {!hideDateFilters && (
+        <div className="flex flex-col gap-4 px-2 lg:flex-row lg:justify-between lg:items-center">
+          <div className="flex flex-col md:flex-row gap-3 items-center">
+        
 
-          <div className="w-full md:w-64">
-            <DatePickerWithRange 
-              date={date} 
-              setDate={(newDate) => {
-                setDate(newDate);
-                // Remove filtro de meses quando usa filtro de data
-                if (newDate?.from && newDate?.to) {
-                  setSelectedMonths(new Set());
-                } else if (!newDate) {
-                  // Se removeu o filtro de data, volta para todos os meses selecionados
+           
+
+            <div className="relative w-full md:w-auto">
+              <div className="flex items-center gap-2 pl-10 pr-3 py-2.5 rounded-xl border-2 border-border/50 bg-muted/30 backdrop-blur-sm">
+                <History className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10 pointer-events-none" />
+                <div className="flex flex-wrap gap-3 items-center">
+                  {availableMonths.map(({ month, year, name }) => (
+                    <div key={`${year}-${month}`} className="flex items-center gap-2">
+                      <Checkbox
+                        id={`month-${month}-${year}`}
+                        checked={selectedMonths.has(month) && selectedYears.get(month) === year}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setSelectedMonths(new Set([...selectedMonths, month]));
+                            setSelectedYears(new Map([...selectedYears, [month, year]]));
+                            // Remove filtro de data quando seleciona meses
+                            setDate(undefined);
+                          } else {
+                            // Impede desmarcar se for o último mês selecionado
+                            if (selectedMonths.size <= 1) {
+                              return;
+                            }
+                            const newSelected = new Set(selectedMonths);
+                            newSelected.delete(month);
+                            setSelectedMonths(newSelected);
+                            const newYears = new Map(selectedYears);
+                            newYears.delete(month);
+                            setSelectedYears(newYears);
+                          }
+                        }}
+                        disabled={!!date || (selectedMonths.size <= 1 && selectedMonths.has(month))}
+                      />
+                      <Label
+                        htmlFor={`month-${month}-${year}`}
+                        className="text-sm font-medium cursor-pointer select-none"
+                      >
+                        {name}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Botão para limpar filtros */}
+            {(date || selectedMonths.size !== availableMonths.length) && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setDate(undefined);
                   const months = getLastFourMonths();
                   setSelectedMonths(new Set(months.map(m => m.month)));
                   setSelectedYears(new Map(months.map(m => [m.month, m.year])));
-                }
-              }} 
-            />
+                }}
+                className="h-11 px-3 sm:px-4 rounded-xl border-2 border-border/50 bg-muted/30 backdrop-blur-sm hover:bg-muted/50 transition-all"
+              >
+                <X className="w-4 h-4 mr-2" />
+                <span className="hidden sm:inline">Limpar filtros</span>
+                <span className="sm:hidden">Limpar</span>
+              </Button>
+            )}
           </div>
-
-          <div className="relative w-full md:w-auto">
-            <div className="flex items-center gap-2 pl-10 pr-3 py-2.5 rounded-xl border-2 border-border/50 bg-muted/30 backdrop-blur-sm">
-              <History className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10 pointer-events-none" />
-              <div className="flex flex-wrap gap-3 items-center">
-                {availableMonths.map(({ month, year, name }) => (
-                  <div key={`${year}-${month}`} className="flex items-center gap-2">
-                    <Checkbox
-                      id={`month-${month}-${year}`}
-                      checked={selectedMonths.has(month) && selectedYears.get(month) === year}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          setSelectedMonths(new Set([...selectedMonths, month]));
-                          setSelectedYears(new Map([...selectedYears, [month, year]]));
-                          // Remove filtro de data quando seleciona meses
-                          setDate(undefined);
-                        } else {
-                          // Impede desmarcar se for o último mês selecionado
-                          if (selectedMonths.size <= 1) {
-                            return;
-                          }
-                          const newSelected = new Set(selectedMonths);
-                          newSelected.delete(month);
-                          setSelectedMonths(newSelected);
-                          const newYears = new Map(selectedYears);
-                          newYears.delete(month);
-                          setSelectedYears(newYears);
-                        }
-                      }}
-                      disabled={!!date || (selectedMonths.size <= 1 && selectedMonths.has(month))}
-                    />
-                    <Label
-                      htmlFor={`month-${month}-${year}`}
-                      className="text-sm font-medium cursor-pointer select-none"
-                    >
-                      {name}
-                    </Label>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Botão para limpar filtros */}
-          {(globalFilter || date || selectedMonths.size !== availableMonths.length) && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setGlobalFilter("");
-                setDate(undefined);
-                const months = getLastFourMonths();
-                setSelectedMonths(new Set(months.map(m => m.month)));
-                setSelectedYears(new Map(months.map(m => [m.month, m.year])));
-              }}
-              className="h-11 px-3 sm:px-4 rounded-xl border-2 border-border/50 bg-muted/30 backdrop-blur-sm hover:bg-muted/50 transition-all"
-            >
-              <X className="w-4 h-4 mr-2" />
-              <span className="hidden sm:inline">Limpar filtros</span>
-              <span className="sm:hidden">Limpar</span>
-            </Button>
-          )}
         </div>
-      </div>
+      )}
+      
 
       <div className="flex flex-col gap-3 md:hidden px-2">
         {table.getRowModel().rows.map((row) => (

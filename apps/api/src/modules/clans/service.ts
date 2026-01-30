@@ -149,10 +149,18 @@ export class ClanServiceImpl extends ClanService {
     );
    
     if (!response.data) throw new BadRequest("Clan not found");
+    
+    // Garante que todos os valores numéricos sejam números válidos
+    const warWins = response.data.warWins ?? 0;
+    const warLosses = response.data.warLosses ?? 0;
+    const warTies = response.data.warTies ?? 0;
+    
     return {
       ...response.data,
-      totalWars:
-        response.data.warWins + response.data.warLosses + response.data.warTies,
+      totalWars: warWins + warLosses + warTies,
+      warWins,
+      warLosses,
+      warTies,
     };
   }
 

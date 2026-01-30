@@ -52,8 +52,8 @@ interface HeaderProps {
 
 const NAV_OPTIONS = [
   {
-    name: "Wars",
-    url: "/wars",
+    name: "Clan",
+    url: "/clan",
     dropdown: true,
     icon: LayoutDashboard,
   },

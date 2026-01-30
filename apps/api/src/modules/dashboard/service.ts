@@ -3,8 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { verifyClanOwnership } from "@/utils/verify-clan-ownership";
 
 export class DashboardService {
-  async getDashboardFromAPI(params: { clanTag: string; userId: string; limit?: number }) {
-    const { clanTag, userId, limit } = params;
+  async getDashboardFromAPI(params: { clanTag: string; userId: string; limit?: number; offset?: number }) {
+    const { clanTag, userId, limit, offset = 0 } = params;
 
     // Verifica se o clan pertence ao usuário logado
     await verifyClanOwnership(clanTag, userId);
@@ -17,10 +17,11 @@ export class DashboardService {
     // Busca apenas o necessário para os últimos 4 meses
     // CWL: 4 meses × 7 guerras = 28 guerras CWL
     // Normais: aproximadamente 60 guerras (1 a cada 2 dias em 4 meses)
-    // Total: ~88 guerras, buscamos 100 para ter margem de segurança
-    const estimatedLimit = limit || 100;
+    // Total: ~88 guerras, buscamos mais para ter margem de segurança
+    // Se há offset, precisamos buscar mais itens para poder aplicar o offset
+    const fetchLimit = limit ? limit + offset : 100 + offset;
     const response = await fetch(
-      `https://api.clashk.ing/war/${encodeURIComponent(clanTag)}/previous?limit=${estimatedLimit}`,
+      `https://api.clashk.ing/war/${encodeURIComponent(clanTag)}/previous?limit=${fetchLimit}`,
     );
     const apiData = await response.json();
     
@@ -50,19 +51,33 @@ export class DashboardService {
       }
     });
 
-    // Limita CWL para 28 guerras (4 meses × 7 guerras por mês)
     // Ordena por data mais recente primeiro
     const sortedCWLWars = cwlWars.sort((a, b) => 
       new Date(b.endTime).getTime() - new Date(a.endTime).getTime()
     );
-    const recentCWLWars = sortedCWLWars.slice(0, 28);
-
-    // Limita guerras normais para aproximadamente 60 (últimos 4 meses)
-    // Ordena por data mais recente primeiro
     const sortedNormalWars = normalWars.sort((a, b) => 
       new Date(b.endTime).getTime() - new Date(a.endTime).getTime()
     );
-    const recentNormalWars = sortedNormalWars.slice(0, 60);
+
+    // Aplica paginação se limit foi especificado
+    let recentCWLWars = sortedCWLWars;
+    let recentNormalWars = sortedNormalWars;
+    
+    if (limit) {
+      // Aplica offset e limit para CWL
+      const cwlStart = offset || 0;
+      const cwlEnd = cwlStart + limit;
+      recentCWLWars = sortedCWLWars.slice(cwlStart, cwlEnd);
+      
+      // Aplica offset e limit para guerras normais
+      const normalStart = offset || 0;
+      const normalEnd = normalStart + limit;
+      recentNormalWars = sortedNormalWars.slice(normalStart, normalEnd);
+    } else {
+      // Limita para os últimos 4 meses se não há limit especificado
+      recentCWLWars = sortedCWLWars.slice(0, 28);
+      recentNormalWars = sortedNormalWars.slice(0, 60);
+    }
 
     // Processa guerras normais
     const playerMap = new Map<string, any>();
@@ -190,5 +205,146 @@ export class DashboardService {
       // Retorna null em caso de erro (melhor que quebrar a aplicação)
       return null;
     }
+  }
+
+  async getWarHistory(params: { clanTag: string; userId: string; limit?: number; offset?: number }) {
+    const { clanTag, userId, limit = 10, offset = 0 } = params;
+
+    // Verifica se o clan pertence ao usuário logado
+    await verifyClanOwnership(clanTag, userId);
+
+    // Busca histórico de guerras da API clashk.ing
+    // Busca mais itens do que necessário para ter margem de segurança
+    const fetchLimit = limit + offset;
+    const response = await fetch(
+      `https://api.clashk.ing/war/${encodeURIComponent(clanTag)}/previous?limit=${fetchLimit}`,
+    );
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch war history: ${response.statusText}`);
+    }
+
+    const apiData = await response.json();
+    
+    // Aplica paginação manualmente (a API não suporta offset diretamente)
+    const items = apiData.items || [];
+    const paginatedItems = items.slice(offset, offset + limit);
+    
+    return {
+      items: paginatedItems,
+      total: items.length, // Total disponível na resposta atual
+      hasMore: items.length >= offset + limit, // Indica se há mais itens
+    };
+  }
+
+  async getCWLSeasonData(params: { clanTag: string; userId: string; season: string }) {
+    const { clanTag, userId, season } = params;
+
+    // Verifica se o clan pertence ao usuário logado
+    await verifyClanOwnership(clanTag, userId);
+
+    // Busca dados de CWL da API clashk.ing
+    const response = await fetch(
+      `https://api.clashk.ing/cwl/${encodeURIComponent(clanTag)}/${season}`,
+    );
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch CWL season data: ${response.statusText}`);
+    }
+
+    const apiData = await response.json();
+    
+    return apiData;
+  }
+
+  // Função auxiliar para obter a última season (formato YYYY-MM)
+  getLatestSeason(): string {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    return `${year}-${month}`;
+  }
+
+  async getNormalWarsFromAPI(params: { clanTag: string; userId: string; limit?: number; offset?: number }) {
+    const { clanTag, userId, limit = 5, offset = 0 } = params;
+
+    // Verifica se o clan pertence ao usuário logado
+    await verifyClanOwnership(clanTag, userId);
+
+    // Busca guerras da API, começando com um limite maior para garantir que temos pelo menos 'limit' guerras normais
+    // Se limit é 5, buscamos pelo menos 10-15 para garantir que temos 5 normais mesmo se houver CWL no meio
+    const fetchLimit = Math.max(limit * 3, 15) + offset;
+    const response = await fetch(
+      `https://api.clashk.ing/war/${encodeURIComponent(clanTag)}/previous?limit=${fetchLimit}`,
+    );
+    const apiData = await response.json();
+    
+    // Filtra apenas guerras normais (não CWL)
+    const normalWars: any[] = [];
+    
+    apiData.items.forEach((war: any) => {
+      // CWL tem 'season' e 'warStartTime', guerras normais não têm season
+      const isCWL = !!(war.season && war.warStartTime);
+      
+      // Se não é CWL, é guerra normal
+      if (!isCWL && !war.season) {
+        normalWars.push(war);
+      }
+    });
+
+    // Ordena por data mais recente primeiro
+    const sortedNormalWars = normalWars.sort((a, b) => 
+      new Date(b.endTime).getTime() - new Date(a.endTime).getTime()
+    );
+
+    // Aplica paginação - pega apenas as 'limit' guerras normais a partir do 'offset'
+    const paginatedWars = sortedNormalWars.slice(offset, offset + limit);
+
+    // Processa guerras normais
+    const playerMap = new Map<string, any>();
+    paginatedWars.forEach((war: any) => {
+      const isNormalOrder = war.clan.tag === clanTag;
+      const ourClan = isNormalOrder ? war.clan : war.opponent;
+      const enemyClan = isNormalOrder ? war.opponent : war.clan;
+
+      ourClan.members.forEach((member: any) => {
+        if (!playerMap.has(member.tag)) {
+          playerMap.set(member.tag, {
+            tag: member.tag,
+            name: member.name,
+            townhallLevel: member.townhallLevel,
+            allAttacks: [],
+            allDefenses: [],
+          });
+        }
+
+        const p = playerMap.get(member.tag);
+
+        if (member.attacks) {
+          member.attacks.forEach((att: any) => {
+            p.allAttacks.push({
+              date: war.endTime,
+              stars: att.stars,
+              destruction: att.destructionPercentage,
+              opponent: enemyClan.name,
+            });
+          });
+        }
+
+        if (member.bestOpponentAttack) {
+          p.allDefenses.push({
+            date: war.endTime,
+            stars: member.bestOpponentAttack.stars,
+            destruction: member.bestOpponentAttack.destructionPercentage,
+          });
+        }
+      });
+    });
+
+    return {
+      players: Array.from(playerMap.values()),
+      totalNormalWars: sortedNormalWars.length, // Total de guerras normais disponíveis
+      hasMore: (offset + limit) < sortedNormalWars.length,
+    };
   }
 }

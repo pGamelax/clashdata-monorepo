@@ -15,13 +15,14 @@ export const dashboard = new Elysia({ prefix: "/dashboard" })
   .get(
     "/data",
     async ({ query, user }) => {
-      const { clanTag, limit } = query;
+      const { clanTag, limit, offset } = query;
       const normalizedTag = normalizeTag(clanTag);
 
       const dashboard = await dashboardService.getDashboardFromAPI({
         clanTag: normalizedTag,
         userId: user.id,
         limit: limit ? Number(limit) : undefined,
+        offset: offset ? Number(offset) : undefined,
       });
 
       return dashboard;
@@ -120,6 +121,175 @@ export const dashboard = new Elysia({ prefix: "/dashboard" })
       query: DashboardModel.getCurrentWarQuery,
       response: {
         200: DashboardModel.getCurrentWarResponse,
+        400: DashboardModel.errorResponse,
+        403: DashboardModel.errorResponse,
+      },
+    },
+  )
+  .get(
+    "/war-history",
+    async ({ query, user }) => {
+      const { clanTag, limit, offset } = query;
+      const normalizedTag = normalizeTag(clanTag);
+
+      const warHistory = await dashboardService.getWarHistory({
+        clanTag: normalizedTag,
+        userId: user.id,
+        limit: limit ? Number(limit) : 10,
+        offset: offset ? Number(offset) : 0,
+      });
+
+      return warHistory;
+    },
+    {
+      auth: true,
+      detail: {
+        summary: "Obter histórico de guerras do clã",
+        description:
+          "Retorna o histórico de guerras anteriores do clã. " +
+          "Inclui informações sobre vitórias, derrotas e empates. " +
+          "Apenas o dono do clan pode acessar essas informações.",
+        tags: ["Dashboard"],
+        examples: [
+          {
+            summary: "Exemplo de requisição",
+            description: "Buscar histórico de guerras de um clan",
+            value: {
+              clanTag: "#CLAN123",
+              limit: 50,
+            },
+          },
+        ],
+      },
+      query: DashboardModel.getWarHistoryQuery,
+      response: {
+        200: DashboardModel.getWarHistoryResponse,
+        400: DashboardModel.errorResponse,
+        403: DashboardModel.errorResponse,
+      },
+    },
+  )
+  .get(
+    "/cwl-season",
+    async ({ query, user }) => {
+      const { clanTag, season } = query;
+      const normalizedTag = normalizeTag(clanTag);
+
+      const cwlData = await dashboardService.getCWLSeasonData({
+        clanTag: normalizedTag,
+        userId: user.id,
+        season: season as string,
+      });
+
+      return cwlData;
+    },
+    {
+      auth: true,
+      detail: {
+        summary: "Obter dados de CWL de uma season específica",
+        description:
+          "Retorna dados de CWL de uma season específica do clã. " +
+          "Apenas o dono do clan pode acessar essas informações.",
+        tags: ["Dashboard"],
+        examples: [
+          {
+            summary: "Exemplo de requisição",
+            description: "Buscar dados de CWL de uma season",
+            value: {
+              clanTag: "#CLAN123",
+              season: "2026-01",
+            },
+          },
+        ],
+      },
+      query: DashboardModel.getCWLSeasonQuery,
+      response: {
+        200: DashboardModel.getCWLSeasonResponse,
+        400: DashboardModel.errorResponse,
+        403: DashboardModel.errorResponse,
+      },
+    },
+  )
+  .get(
+    "/cwl-latest-season",
+    async ({ query, user }) => {
+      const { clanTag } = query;
+      const normalizedTag = normalizeTag(clanTag);
+
+      const latestSeason = dashboardService.getLatestSeason();
+      const cwlData = await dashboardService.getCWLSeasonData({
+        clanTag: normalizedTag,
+        userId: user.id,
+        season: latestSeason,
+      });
+
+      return { ...cwlData, season: latestSeason };
+    },
+    {
+      auth: true,
+      detail: {
+        summary: "Obter dados de CWL da última season",
+        description:
+          "Retorna dados de CWL da última season do clã. " +
+          "Apenas o dono do clan pode acessar essas informações.",
+        tags: ["Dashboard"],
+        examples: [
+          {
+            summary: "Exemplo de requisição",
+            description: "Buscar dados de CWL da última season",
+            value: {
+              clanTag: "#CLAN123",
+            },
+          },
+        ],
+      },
+      query: DashboardModel.getCWLLatestSeasonQuery,
+      response: {
+        200: DashboardModel.getCWLSeasonResponse,
+        400: DashboardModel.errorResponse,
+        403: DashboardModel.errorResponse,
+      },
+    },
+  )
+  .get(
+    "/normal-wars",
+    async ({ query, user }) => {
+      const { clanTag, limit, offset } = query;
+      const normalizedTag = normalizeTag(clanTag);
+
+      const normalWars = await dashboardService.getNormalWarsFromAPI({
+        clanTag: normalizedTag,
+        userId: user.id,
+        limit: limit ? Number(limit) : undefined,
+        offset: offset ? Number(offset) : undefined,
+      });
+
+      return normalWars;
+    },
+    {
+      auth: true,
+      detail: {
+        summary: "Obter dados de guerras normais",
+        description:
+          "Retorna dados agregados de guerras normais (não CWL) de um clan. " +
+          "Filtra automaticamente guerras CWL e retorna apenas guerras normais. " +
+          "Apenas o dono do clan pode acessar essas informações.",
+        tags: ["Dashboard"],
+        examples: [
+          {
+            summary: "Exemplo de requisição",
+            description: "Buscar dados de guerras normais",
+            value: {
+              clanTag: "#CLAN123",
+              limit: 5,
+              offset: 0,
+            },
+          },
+        ],
+      },
+      query: DashboardModel.getNormalWarsQuery,
+      response: {
+        200: DashboardModel.getNormalWarsResponse,
         400: DashboardModel.errorResponse,
         403: DashboardModel.errorResponse,
       },

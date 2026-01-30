@@ -21,13 +21,30 @@ export const endpoints = {
 
   // Dashboard
   dashboard: {
-    getData: (clanTag: string, limit?: number) => {
+    getData: (clanTag: string, limit?: number, offset?: number) => {
       const params = new URLSearchParams({ clanTag });
       if (limit) params.append("limit", limit.toString());
+      if (offset) params.append("offset", offset.toString());
       return `${API_BASE_URL}/dashboard/data?${params.toString()}`;
     },
     getCurrentWar: (clanTag: string) =>
       `${API_BASE_URL}/dashboard/current-war?clanTag=${encodeURIComponent(clanTag)}`,
+    getWarHistory: (clanTag: string, limit?: number, offset?: number) => {
+      const params = new URLSearchParams({ clanTag });
+      if (limit) params.append("limit", limit.toString());
+      if (offset) params.append("offset", offset.toString());
+      return `${API_BASE_URL}/dashboard/war-history?${params.toString()}`;
+    },
+    getCWLSeason: (clanTag: string, season: string) =>
+      `${API_BASE_URL}/dashboard/cwl-season?clanTag=${encodeURIComponent(clanTag)}&season=${encodeURIComponent(season)}`,
+    getCWLLatestSeason: (clanTag: string) =>
+      `${API_BASE_URL}/dashboard/cwl-latest-season?clanTag=${encodeURIComponent(clanTag)}`,
+    getNormalWars: (clanTag: string, limit?: number, offset?: number) => {
+      const params = new URLSearchParams({ clanTag });
+      if (limit) params.append("limit", limit.toString());
+      if (offset) params.append("offset", offset.toString());
+      return `${API_BASE_URL}/dashboard/normal-wars?${params.toString()}`;
+    },
   },
 
   // Players

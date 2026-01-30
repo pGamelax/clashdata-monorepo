@@ -43,7 +43,7 @@ function RouteComponent() {
 
   const handleSetActiveClan = (tag: string) => {
     try {
-      router.history.push(`/wars/${tag.replace("#", "")}`);
+      router.history.push(`/clan/${tag.replace("#", "")}`);
     } catch (error) {
       // Silenciosamente ignora erros de navegação
     }

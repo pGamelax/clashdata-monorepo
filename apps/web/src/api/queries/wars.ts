@@ -5,7 +5,7 @@
 import { queryOptions } from "@tanstack/react-query";
 import { apiFetch, normalizeTag } from "../client";
 import { endpoints } from "../endpoints";
-import type { CurrentWar } from "../../routes/(private)/wars/-current-war-types";
+import type { CurrentWar } from "@/routes/(private)/clan/-current-war-types";
 
 /**
  * Query options para obter guerra atual

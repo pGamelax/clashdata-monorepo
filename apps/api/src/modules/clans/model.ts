@@ -48,7 +48,10 @@ export namespace ClanModel {
 
   // Query para obter informações do clan
   export const getClanInfoQuery = z.object({
-    clanTag: z.string().min(1, "Tag do clan é obrigatória"),
+    clanTag: z.string().min(1, "Tag do clan é obrigatória").refine(
+      (tag) => tag && tag.trim().length > 0,
+      { message: "Tag do clan não pode estar vazia" }
+    ),
   });
 
   export type GetClanInfoQuery = z.infer<typeof getClanInfoQuery>;
@@ -57,15 +60,40 @@ export namespace ClanModel {
     name: z.string(),
     tag: z.string(),
     description: z.string(),
+    type: z.string().optional(),
+    location: z.object({
+      id: z.number(),
+      name: z.string(),
+      isCountry: z.boolean(),
+      countryCode: z.string(),
+    }).optional(),
+    isFamilyFriendly: z.boolean().optional(),
     badgeUrls: z.object({
       small: z.string(),
       medium: z.string(),
       large: z.string(),
     }),
+    clanLevel: z.number().optional(),
+    clanPoints: z.number().optional(),
+    clanBuilderBasePoints: z.number().optional(),
+    clanCapitalPoints: z.number().optional(),
+    capitalLeague: z.object({
+      id: z.number(),
+      name: z.string(),
+    }).optional(),
+    requiredTrophies: z.number().optional(),
+    warFrequency: z.string().optional(),
+    warWinStreak: z.number().optional(),
     totalWars: z.number(),
     warWins: z.number(),
     warTies: z.number(),
     warLosses: z.number(),
+    isWarLogPublic: z.boolean().optional(),
+    warLeague: z.object({
+      id: z.number(),
+      name: z.string(),
+    }).optional(),
+    members: z.number().optional(),
   });
 
   export type ClanInfoResponse = z.infer<typeof clanInfoResponse>;
