@@ -119,8 +119,30 @@ export namespace DashboardModel {
   // Query para obter dados de guerras normais
   export const getNormalWarsQuery = z.object({
     clanTag: z.string().min(1, "Tag do clan é obrigatória"),
-    limit: z.string().optional().transform((val) => val ? Number(val) : undefined),
-    offset: z.string().optional().transform((val) => val ? Number(val) : undefined),
+    months: z.preprocess(
+      (val) => {
+        // Se é undefined, retorna undefined
+        if (val === undefined || val === null) return undefined;
+        
+        // Se já é um array, retorna direto
+        if (Array.isArray(val)) {
+          return val;
+        }
+        
+        // Se é string, pode ser separada por vírgulas
+        if (typeof val === "string") {
+          // Se contém vírgula, separa
+          if (val.includes(",")) {
+            return val.split(",").map(m => m.trim()).filter(m => m.length > 0);
+          }
+          // Se não contém vírgula, retorna como array com um elemento
+          return [val.trim()].filter(m => m.length > 0);
+        }
+        
+        return undefined;
+      },
+      z.array(z.string()).optional()
+    ),
   });
 
   export type GetNormalWarsQuery = z.infer<typeof getNormalWarsQuery>;
@@ -150,7 +172,6 @@ export namespace DashboardModel {
       })
     ),
     totalNormalWars: z.number(),
-    hasMore: z.boolean(),
   });
 
   export type GetNormalWarsResponse = z.infer<typeof getNormalWarsResponse>;

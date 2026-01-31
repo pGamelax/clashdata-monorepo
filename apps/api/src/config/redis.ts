@@ -21,19 +21,19 @@ export const redisConnection = new Redis({
   },
 });
 
-redisConnection.on("error", (err) => {
-  console.error("❌ Redis connection error:", err.message);
+redisConnection.on("error", () => {
+  // Redis connection error
 });
 
 redisConnection.on("connect", () => {
-  console.log("🔄 Conectando ao Redis...");
+  // Conectando ao Redis
 });
 
 redisConnection.on("ready", () => {
-  console.log("✅ Redis conectado e pronto");
+  // Redis conectado e pronto
 });
 
 redisConnection.on("close", () => {
-  console.log("⚠️ Conexão Redis fechada");
+  // Conexão Redis fechada
 });
 

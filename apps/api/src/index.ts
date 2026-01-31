@@ -104,13 +104,11 @@ const app = new Elysia()
   .listen({ hostname: "0.0.0.0", port: 3333 });
 
 //Inicializa o scheduler de temporada ao iniciar o servidor
-initializeSeasonScheduler().catch((error) => {
-  console.error("Erro ao inicializar scheduler de temporada:", error);
+initializeSeasonScheduler().catch(() => {
+  // Erro ao inicializar scheduler de temporada
 });
 
   redisConnection.on("ready", async () => {
-  console.log("🚀 Iniciando schedulers de monitoramento de jogadores...");
-  
   // Inicializa a queue com todos os jogadores do playerSnapshot
   await initializePlayerSnapshotQueue();
   
@@ -124,9 +122,8 @@ initializeSeasonScheduler().catch((error) => {
 // Se já estiver pronto, inicia imediatamente
 if (redisConnection.status === "ready") {
   (async () => {
-    console.log("🚀 Iniciando schedulers de monitoramento de jogadores...");
     await initializePlayerSnapshotQueue();
     startClanMembersScheduler();
     startPlayerSnapshotScheduler();
   })();
-}  
+}   

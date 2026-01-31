@@ -4,8 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { getClanInfoQueryOptions } from "@/api";
 import { getWarHistoryQueryOptions } from "@/api/queries/dashboard";
 import { CurrentWar } from "../-current-war";
-import { WarsTableSkeleton } from "./-skeleton";
-import { History, Trophy, XCircle, Minus, ChevronLeft, ChevronRight, Star } from "lucide-react";
+import { History, Trophy, XCircle, Minus, ChevronLeft, ChevronRight, Star, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
@@ -19,8 +18,8 @@ export const Route = createFileRoute("/(private)/clan/$clanTag/history")({
     await queryClient.ensureQueryData(getWarHistoryQueryOptions(params.clanTag, WARS_PER_PAGE, 0));
   },
   pendingComponent: () => (
-    <div className="space-y-3 sm:space-y-4">
-      <WarsTableSkeleton />
+    <div className="flex items-center justify-center min-h-[400px]">
+      <Loader2 className="w-8 h-8 animate-spin text-primary" />
     </div>
   ),
   component: RouteComponent,
@@ -109,8 +108,8 @@ function RouteComponent() {
 
   if (isLoading) {
     return (
-      <div className="space-y-3 sm:space-y-4">
-        <WarsTableSkeleton />
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -148,7 +147,7 @@ function RouteComponent() {
         {/* Lista de Guerras */}
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <WarsTableSkeleton />
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
           </div>
         ) : processedWars && processedWars.length > 0 ? (
           <>

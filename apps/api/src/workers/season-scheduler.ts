@@ -26,13 +26,11 @@ export async function scheduleSeasonDataFetch(configId: string) {
     });
 
     if (!seasonConfig) {
-      console.log("⚠️ Configuração de temporada não encontrada");
       return;
     }
 
     // Se já foi processada, não agenda novamente
     if (seasonConfig.isProcessed) {
-      console.log(`⚠️ Configuração ${configId} já foi processada`);
       return;
     }
 
@@ -41,7 +39,6 @@ export async function scheduleSeasonDataFetch(configId: string) {
 
     // Se a data já passou, não agenda
     if (scheduledAt < now) {
-      console.log(`⚠️ Data de execução já passou para configuração ${configId}`);
       return;
     }
 
@@ -52,9 +49,6 @@ export async function scheduleSeasonDataFetch(configId: string) {
     );
 
     if (existingJob) {
-      console.log(
-        `✅ Job já agendado para configuração ${seasonConfig.id} em ${scheduledAt.toISOString()}`
-      );
       return;
     }
 
@@ -70,12 +64,8 @@ export async function scheduleSeasonDataFetch(configId: string) {
         delay: scheduledAt.getTime() - now.getTime(),
       }
     );
-
-    console.log(
-      `✅ Job agendado para buscar dados da configuração ${seasonConfig.id} em ${scheduledAt.toISOString()}`
-    );
   } catch (error: any) {
-    console.error("Erro ao agendar busca de temporada:", error.message);
+    // Erro ao agendar busca de temporada
   }
 }
 
@@ -97,9 +87,8 @@ export async function initializeSeasonScheduler() {
       await scheduleSeasonDataFetch(config.id);
     }
 
-    console.log(`✅ Scheduler inicializado: ${pendingConfigs.length} configurações pendentes`);
   } catch (error: any) {
-    console.error("Erro ao inicializar scheduler de temporada:", error.message);
+    // Erro ao inicializar scheduler de temporada
   }
 }
 
@@ -111,14 +100,8 @@ export const seasonWorker = new Worker(
   async (job) => {
     const { configId } = job.data;
 
-    console.log(`🔄 Iniciando busca de dados para configuração ${configId}`);
-
     const seasonService = new SeasonService();
     const result = await seasonService.fetchAndSaveSeasonData(configId);
-
-    console.log(
-      `✅ Dados da configuração ${configId} salvos: ${result.totalPlayersSaved} jogadores`
-    );
 
     return result;
   },
@@ -128,11 +111,11 @@ export const seasonWorker = new Worker(
   }
 );
 
-seasonWorker.on("completed", (job) => {
-  console.log(`✅ Job ${job.id} concluído com sucesso`);
+seasonWorker.on("completed", () => {
+  // Job concluído
 });
 
-seasonWorker.on("failed", (job, err) => {
-  console.error(`❌ Job ${job?.id} falhou:`, err.message);
+seasonWorker.on("failed", () => {
+  // Job falhou
 });
 

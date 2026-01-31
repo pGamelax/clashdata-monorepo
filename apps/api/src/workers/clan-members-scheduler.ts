@@ -44,20 +44,12 @@ export async function scheduleClanMembersMonitoring() {
 
         clansProcessed++;
       } catch (error: any) {
-        // Log apenas erros que não são rate limit
-        if (!error.message?.includes("429") && error.response?.status !== 429) {
-          console.error(`Erro ao processar clan ${clan.tag}:`, error.message?.substring(0, 100));
-        }
         // Continua com o próximo clan mesmo se houver erro
       }
     }
 
-    // Log resumo apenas
-    if (totalPlayersAdded > 0) {
-      console.log(`📊 Scheduler: ${totalPlayersAdded} novos jogadores de ${clansProcessed} clans adicionados ao snapshot`);
-    }
   } catch (error: any) {
-    console.error("Erro no scheduler de membros:", error.message);
+    // Erro no scheduler de membros
   }
 }
 
@@ -73,11 +65,8 @@ export function startClanMembersScheduler() {
     scheduleClanMembersMonitoring();
   }, 300000);
 
-  console.log("🔄 Scheduler de membros dos clans iniciado (executa a cada 5 minutos)");
-
   // Retorna função para parar o scheduler
   return () => {
     clearInterval(interval);
-    console.log("⏹️ Scheduler de membros dos clans parado");
   };
 }

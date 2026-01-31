@@ -29,9 +29,8 @@ export const players = new Elysia({ prefix: "/players" })
         response.data.tag,
         response.data.name,
         response.data.clan?.tag
-      ).catch((error) => {
-        // Log silencioso - não queremos que erros na queue afetem a resposta da API
-        console.debug(`Não foi possível adicionar ${response.data.tag} ao snapshot/queue:`, error.message);
+      ).catch(() => {
+        // Erro silencioso - não queremos que erros na queue afetem a resposta da API
       });
 
       return response.data;
@@ -75,8 +74,8 @@ export const players = new Elysia({ prefix: "/players" })
 
       // Adiciona o jogador ao snapshot e à fila de monitoramento
       // Faz isso de forma assíncrona para não bloquear a resposta
-      addPlayerToSnapshotAndQueue(normalizedTag).catch((error) => {
-        console.debug(`Não foi possível adicionar ${normalizedTag} ao snapshot/queue:`, error.message);
+      addPlayerToSnapshotAndQueue(normalizedTag).catch(() => {
+        // Erro silencioso
       });
 
       return response.data;

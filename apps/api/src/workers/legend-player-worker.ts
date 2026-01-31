@@ -214,19 +214,9 @@ LegendPlayerWorker.on("completed", (job) => {
   completedCount++;
   const jobData = job?.data as any;
   
-  // Log a cada 50, 100, 150 jobs completados
+  // Limpa erros recentes periodicamente
   if (completedCount === 50 || completedCount === 100 || completedCount === 150 || completedCount % 50 === 0) {
-    const successRate = failedCount > 0 
-      ? ((completedCount / (completedCount + failedCount)) * 100).toFixed(1)
-      : "100.0";
-    console.log(`✅ ${completedCount} jobs completados | ❌ ${failedCount} falharam | 📊 ${successRate}% sucesso`);
-    
-    // Mostra erros recentes se houver
     if (recentErrors.length > 0) {
-      console.log(`   Erros recentes:`);
-      recentErrors.forEach(({ error, count }) => {
-        console.log(`   - ${error} (${count}x)`);
-      });
       recentErrors.length = 0; // Limpa após mostrar
     }
   }
@@ -251,19 +241,9 @@ LegendPlayerWorker.on("failed", (job, err) => {
     recentErrors.push({ error: errorSummary, count: 1 });
   }
 
-  // Log a cada 50, 100, 150 jobs falhados
+  // Limpa erros recentes periodicamente
   if (failedCount === 50 || failedCount === 100 || failedCount === 150 || failedCount % 50 === 0) {
-    const successRate = completedCount > 0 
-      ? ((completedCount / (completedCount + failedCount)) * 100).toFixed(1)
-      : "0.0";
-    console.log(`✅ ${completedCount} jobs completados | ❌ ${failedCount} falharam | 📊 ${successRate}% sucesso`);
-    
-    // Mostra erros recentes
     if (recentErrors.length > 0) {
-      console.log(`   Erros recentes:`);
-      recentErrors.forEach(({ error, count }) => {
-        console.log(`   - ${error} (${count}x)`);
-      });
       recentErrors.length = 0; // Limpa após mostrar
     }
   }

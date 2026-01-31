@@ -45,10 +45,6 @@ export async function addPlayerToSnapshot(
 
     return true; // Foi criado
   } catch (error: any) {
-    // Log apenas se não for erro de duplicata
-    if (!error.message?.includes("Unique constraint") && !error.code?.includes("P2002")) {
-      console.error(`Erro ao adicionar jogador ${playerTag} ao snapshot:`, error.message?.substring(0, 100));
-    }
     return false;
   }
 }

@@ -39,10 +39,12 @@ export const endpoints = {
       `${API_BASE_URL}/dashboard/cwl-season?clanTag=${encodeURIComponent(clanTag)}&season=${encodeURIComponent(season)}`,
     getCWLLatestSeason: (clanTag: string) =>
       `${API_BASE_URL}/dashboard/cwl-latest-season?clanTag=${encodeURIComponent(clanTag)}`,
-    getNormalWars: (clanTag: string, limit?: number, offset?: number) => {
+    getNormalWars: (clanTag: string, months?: string[]) => {
       const params = new URLSearchParams({ clanTag });
-      if (limit) params.append("limit", limit.toString());
-      if (offset) params.append("offset", offset.toString());
+      if (months && months.length > 0) {
+        // Envia como string separada por vírgulas para evitar problemas com arrays em query strings
+        params.append("months", months.join(","));
+      }
       return `${API_BASE_URL}/dashboard/normal-wars?${params.toString()}`;
     },
   },

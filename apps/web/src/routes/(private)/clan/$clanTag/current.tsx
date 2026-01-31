@@ -4,8 +4,7 @@ import { useEffect } from "react";
 import { getClanInfoQueryOptions } from "@/api";
 import { getCurrentWarQueryOptions } from "@/api/queries/wars";
 import { CurrentWar } from "../-current-war";
-import { CurrentWarSkeleton } from "./-skeleton";
-import { Sword } from "lucide-react";
+import { Sword, Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/(private)/clan/$clanTag/current")({
   loader: async ({ context: { queryClient }, params }) => {
@@ -16,7 +15,11 @@ export const Route = createFileRoute("/(private)/clan/$clanTag/current")({
       // Ignora erros (guerra pode não existir)
     }
   },
-  pendingComponent: () => <CurrentWarSkeleton />,
+  pendingComponent: () => (
+    <div className="flex items-center justify-center min-h-[400px]">
+      <Loader2 className="w-8 h-8 animate-spin text-primary" />
+    </div>
+  ),
   component: RouteComponent,
 });
 
@@ -34,7 +37,11 @@ function RouteComponent() {
   }, [clanStats.name]);
 
   if (isLoadingWar || isFetchingWar) {
-    return <CurrentWarSkeleton />;
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
   }
 
   return (

@@ -4,7 +4,7 @@ import { handleClanErrorWithRedirect } from "@/lib/clan-error-handler";
 import { getClanInfoQueryOptions } from "@/api";
 import { ClanHeader } from "@/components/clan-header";
 import { ClanTabs } from "./-clan-tabs";
-import { ClanPageSkeleton } from "./-skeleton";
+import { Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/(private)/clan/$clanTag")({
   validateSearch: (search: Record<string, unknown>) => {
@@ -19,7 +19,11 @@ export const Route = createFileRoute("/(private)/clan/$clanTag")({
       handleClanErrorWithRedirect(error, params.clanTag);
     }
   },
-  pendingComponent: () => <ClanPageSkeleton />,
+  pendingComponent: () => (
+    <div className="flex items-center justify-center min-h-screen">
+      <Loader2 className="w-8 h-8 animate-spin text-primary" />
+    </div>
+  ),
   component: ClanLayout,
 });
 

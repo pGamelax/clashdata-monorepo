@@ -11,7 +11,6 @@ import { cwlColumns } from "../-cwl-columns";
 import { Shield, Loader2, Calendar, ChevronDown, X, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { WarsTableSkeleton } from "./-skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import {
@@ -269,8 +268,8 @@ export const Route = createFileRoute("/(private)/clan/$clanTag/cwl")({
     await queryClient.ensureQueryData(getCWLLatestSeasonQueryOptions(params.clanTag));
   },
   pendingComponent: () => (
-    <div className="space-y-3 sm:space-y-4">
-      <WarsTableSkeleton />
+    <div className="flex items-center justify-center min-h-[400px]">
+      <Loader2 className="w-8 h-8 animate-spin text-primary" />
     </div>
   ),
   component: RouteComponent,
@@ -477,6 +476,7 @@ function RouteComponent() {
                         checked={selectedSeasons.has(season)}
                         onCheckedChange={() => handleSeasonToggle(season)}
                         disabled={selectedSeasons.size === 1 && selectedSeasons.has(season)}
+                        onClick={(e) => e.stopPropagation()}
                       />
                       <Label
                         htmlFor={`season-${season}`}

@@ -78,13 +78,13 @@ export const getCWLLatestSeasonQueryOptions = (clanTag: string) =>
 /**
  * Query options para obter dados de guerras normais
  */
-export const getNormalWarsQueryOptions = (clanTag: string, limit?: number, offset?: number) =>
+export const getNormalWarsQueryOptions = (clanTag: string, months?: string[]) =>
   queryOptions({
-    queryKey: ["normal-wars", clanTag, limit, offset],
+    queryKey: ["normal-wars", clanTag, months],
     queryFn: async () => {
       const cleanTag = normalizeTag(clanTag);
-      const response = await apiFetch(endpoints.dashboard.getNormalWars(cleanTag, limit, offset));
-      return response as { players: any[]; totalNormalWars: number; hasMore: boolean };
+      const response = await apiFetch(endpoints.dashboard.getNormalWars(cleanTag, months));
+      return response as { players: any[]; totalNormalWars: number };
     },
     staleTime: 0,
   });

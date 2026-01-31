@@ -41,12 +41,10 @@ async function masterJobExists(): Promise<boolean> {
       }
     } catch (error) {
       // Se der erro ao verificar, assume que não existe para não bloquear
-      console.debug("Erro ao verificar jobs na fila:", error);
     }
 
     return false;
   } catch (error) {
-    console.error("Erro ao verificar se job mestre existe:", error);
     // Em caso de erro, assume que existe para não criar duplicado
     return true;
   }
@@ -95,25 +93,14 @@ export async function schedulePlayerSnapshotMonitoring() {
           removeOnComplete: true,
         }
       );
-      console.log("✅ Job Mestre (Fan-out) criado (executa a cada 2 minutos)");
     } catch (error: any) {
       // Se o erro for de job já existe, ignora (pode ter sido criado entre as verificações)
-      if (
-        error.message?.includes("already exists") ||
-        error.message?.includes("duplicate") ||
-        error.message?.includes("Job already exists")
-      ) {
-        console.log("✅ Job Mestre (Fan-out) já existe (criado por outra instância)");
-      } else {
-        console.error("Erro ao criar job mestre:", error.message?.substring(0, 100));
-      }
     } finally {
       // Remove lock
       isCreatingMasterJob = false;
     }
   } catch (error: any) {
     isCreatingMasterJob = false;
-    console.error("Erro no scheduler de player snapshot:", error.message);
   }
 }
 
@@ -124,16 +111,12 @@ export async function schedulePlayerSnapshotMonitoring() {
  */
 export async function initializePlayerSnapshotQueue() {
   try {
-    console.log("🚀 Inicializando Job Mestre (Fan-out) para distribuir jobs de jogadores...");
-
     // Verifica lock primeiro
     if (isCreatingMasterJob) {
-      console.log("⏳ Job Mestre já está sendo criado, aguardando...");
       // Aguarda um pouco e verifica novamente
       await new Promise((resolve) => setTimeout(resolve, 1000));
       const exists = await masterJobExists();
       if (exists) {
-        console.log("✅ Job Mestre (Fan-out) já existe");
         return;
       }
     }
@@ -141,7 +124,6 @@ export async function initializePlayerSnapshotQueue() {
     // Verifica se já existe
     const exists = await masterJobExists();
     if (exists) {
-      console.log("✅ Job Mestre (Fan-out) já existe");
       return;
     }
 
@@ -152,7 +134,6 @@ export async function initializePlayerSnapshotQueue() {
       // Verifica novamente após adquirir o lock (double-check)
       const existsAfterLock = await masterJobExists();
       if (existsAfterLock) {
-        console.log("✅ Job Mestre (Fan-out) já existe");
         isCreatingMasterJob = false;
         return;
       }
@@ -171,25 +152,14 @@ export async function initializePlayerSnapshotQueue() {
           removeOnComplete: true,
         }
       );
-      console.log("✅ Job Mestre (Fan-out) criado (executa a cada 2 minutos)");
     } catch (error: any) {
       // Se o erro for de job já existe, ignora (pode ter sido criado por outra instância)
-      if (
-        error.message?.includes("already exists") ||
-        error.message?.includes("duplicate") ||
-        error.message?.includes("Job already exists")
-      ) {
-        console.log("✅ Job Mestre (Fan-out) já existe (criado por outra instância)");
-      } else {
-        console.error("Erro ao criar job mestre:", error.message?.substring(0, 100));
-      }
     } finally {
       // Remove lock
       isCreatingMasterJob = false;
     }
   } catch (error: any) {
     isCreatingMasterJob = false;
-    console.error("Erro ao inicializar queue do playerSnapshot:", error.message);
   }
 }
 
@@ -205,11 +175,8 @@ export function startPlayerSnapshotScheduler() {
     schedulePlayerSnapshotMonitoring();
   }, 300000); // A cada 5 minutos (300000ms) - apenas para garantir que o job existe
 
-  console.log("🔄 Player Snapshot Scheduler iniciado (verifica job mestre a cada 5 minutos)");
-
   // Retorna função para parar o scheduler
   return () => {
     clearInterval(interval);
-    console.log("⏹️ Player Snapshot Scheduler parado");
   };
 }

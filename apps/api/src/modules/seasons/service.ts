@@ -53,7 +53,6 @@ export class SeasonService {
     }
 
     if (seasonConfig.isProcessed) {
-      console.log(`⚠️ Configuração ${configId} já foi processada`);
       return {
         success: true,
         totalPlayersSaved: 0,
@@ -124,37 +123,21 @@ export class SeasonService {
               totalPlayersSaved++;
             }
           } catch (error: any) {
-            // Log apenas erros que não são rate limit
-            if (!error.message?.includes("429") && error.response?.status !== 429) {
-              console.error(
-                `Erro ao processar jogador ${member.tag}:`,
-                error.message?.substring(0, 100)
-              );
-            }
             // Continua com o próximo jogador mesmo se houver erro
           }
         }
       } catch (error: any) {
-        // Log apenas erros que não são rate limit
-        if (!error.message?.includes("429") && error.response?.status !== 429) {
-          console.error(
-            `Erro ao processar clan ${clan.tag}:`,
-            error.message?.substring(0, 100)
-          );
-        }
         // Continua com o próximo clan mesmo se houver erro
       }
     }
 
     // Reseta os troféus de TODOS os jogadores no playerSnapshot para 5000
     // Isso corrige o bug onde o sistema calcula ataques negativos após o reset da temporada
-    console.log("🔄 Resetando troféus de todos os jogadores para 5000 (reset da temporada)...");
-    const resetResult = await prisma.playerSnapshot.updateMany({
+    await prisma.playerSnapshot.updateMany({
       data: {
         lastTrophies: 5000,
       },
     });
-    console.log(`✅ ${resetResult.count} jogadores tiveram seus troféus resetados para 5000 no banco`);
 
     // Reseta também o cache do Redis para todos os jogadores
     try {
@@ -179,9 +162,7 @@ export class SeasonService {
           // Ignora erros individuais de cache
         }
       }
-      console.log(`✅ Cache do Redis resetado para ${cacheResetCount} jogadores`);
     } catch (error: any) {
-      console.error("⚠️ Erro ao resetar cache do Redis:", error.message?.substring(0, 100));
       // Não falha o job se o cache falhar
     }
 

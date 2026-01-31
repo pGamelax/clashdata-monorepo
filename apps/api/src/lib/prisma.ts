@@ -18,8 +18,8 @@ const pool = new Pool({
 });
 
 // Trata erros do pool
-pool.on('error', (err) => {
-  console.error('❌ Erro inesperado no pool do PostgreSQL:', err);
+pool.on('error', () => {
+  // Erro inesperado no pool do PostgreSQL
 });
 
 const adapter = new PrismaPg(pool);

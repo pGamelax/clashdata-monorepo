@@ -87,15 +87,11 @@ export const dashboard = new Elysia({ prefix: "/dashboard" })
     async ({ query, user }) => {
       const { clanTag } = query;
       const normalizedTag = normalizeTag(clanTag);
-      
-      console.log(`[CurrentWar] Buscando guerra atual para clã: ${clanTag} -> ${normalizedTag}`);
 
       const currentWar = await dashboardService.getCurrentWar({
         clanTag: normalizedTag,
         userId: user.id,
       });
-
-      console.log(`[CurrentWar] Resposta:`, currentWar ? `Guerra encontrada (state: ${currentWar.state})` : 'Nenhuma guerra encontrada');
       
       return currentWar;
     },
@@ -254,14 +250,13 @@ export const dashboard = new Elysia({ prefix: "/dashboard" })
   .get(
     "/normal-wars",
     async ({ query, user }) => {
-      const { clanTag, limit, offset } = query;
+      const { clanTag, months } = query;
       const normalizedTag = normalizeTag(clanTag);
 
       const normalWars = await dashboardService.getNormalWarsFromAPI({
         clanTag: normalizedTag,
         userId: user.id,
-        limit: limit ? Number(limit) : undefined,
-        offset: offset ? Number(offset) : undefined,
+        months: months,
       });
 
       return normalWars;

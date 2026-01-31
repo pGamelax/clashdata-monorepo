@@ -183,25 +183,15 @@ export class DashboardService {
       if (!response.ok) {
         // Se não há guerra atual, retorna null
         if (response.status === 404) {
-          console.log(`Nenhuma guerra atual encontrada para o clã ${clanTag}`);
           return null;
         }
         const errorText = await response.text();
-        console.error(`Erro ao buscar guerra atual: ${response.status} - ${errorText}`);
         throw new Error(`Failed to fetch current war: ${response.statusText}`);
       }
 
       const warData = await response.json();
-      console.log(`Guerra atual encontrada para o clã ${clanTag}:`, {
-        state: warData?.state,
-        hasClan: !!warData?.clan,
-        hasOpponent: !!warData?.opponent,
-        clanTag: warData?.clan?.tag,
-        opponentTag: warData?.opponent?.tag,
-      });
       return warData;
     } catch (error) {
-      console.error(`Erro ao buscar guerra atual para ${clanTag}:`, error);
       // Retorna null em caso de erro (melhor que quebrar a aplicação)
       return null;
     }
@@ -265,30 +255,126 @@ export class DashboardService {
     return `${year}-${month}`;
   }
 
-  async getNormalWarsFromAPI(params: { clanTag: string; userId: string; limit?: number; offset?: number }) {
-    const { clanTag, userId, limit = 5, offset = 0 } = params;
+  async getNormalWarsFromAPI(params: { clanTag: string; userId: string; months?: string[] }) {
+    const { clanTag, userId, months } = params;
 
     // Verifica se o clan pertence ao usuário logado
     await verifyClanOwnership(clanTag, userId);
 
-    // Busca guerras da API, começando com um limite maior para garantir que temos pelo menos 'limit' guerras normais
-    // Se limit é 5, buscamos pelo menos 10-15 para garantir que temos 5 normais mesmo se houver CWL no meio
-    const fetchLimit = Math.max(limit * 3, 15) + offset;
+    // Se meses não foram especificados, usa o mês atual
+    const targetMonths = months && months.length > 0 
+      ? months 
+      : [this.getLatestSeason()]; // getLatestSeason retorna YYYY-MM
+
+    // Identifica o mês atual
+    const currentMonth = this.getLatestSeason();
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    let fetchLimit = 0;
+    const hasCurrentMonth = targetMonths.includes(currentMonth);
+    const pastMonths = targetMonths.filter(m => m !== currentMonth);
+
+    if (hasCurrentMonth) {
+      // Para o mês atual, busca um número maior para garantir que pegamos todas até hoje
+      // Considerando que pode ter CWL no meio, buscamos mais
+      fetchLimit += 100; // Margem de segurança para o mês atual
+    }
+
+    // Para cada mês passado, busca até 45 guerras (18 normais + margem para CWL)
+    // Multiplica por 2.5 para ter margem de segurança (18 normais + ~27 CWL possíveis)
+    fetchLimit += pastMonths.length * 45;
+
+    // Mínimo de 100 para garantir que sempre buscamos dados suficientes
+    fetchLimit = Math.max(fetchLimit, 100);
+
     const response = await fetch(
       `https://api.clashk.ing/war/${encodeURIComponent(clanTag)}/previous?limit=${fetchLimit}`,
     );
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch wars: ${response.statusText}`);
+    }
+    
     const apiData = await response.json();
     
-    // Filtra apenas guerras normais (não CWL)
-    const normalWars: any[] = [];
+    // A API pode retornar um array diretamente ou um objeto com items
+    let wars: any[] = [];
+    if (Array.isArray(apiData)) {
+      wars = apiData;
+    } else if (apiData.items && Array.isArray(apiData.items)) {
+      wars = apiData.items;
+    } else {
+      return {
+        players: [],
+        totalNormalWars: 0,
+      };
+    }
     
-    apiData.items.forEach((war: any) => {
+    // Filtra apenas guerras normais (não CWL) e por mês baseado na data real
+    const normalWars: any[] = [];
+    const normalWarsByMonth = new Map<string, number>(); // Contador de guerras normais por mês
+    
+    wars.forEach((war: any) => {
       // CWL tem 'season' e 'warStartTime', guerras normais não têm season
       const isCWL = !!(war.season && war.warStartTime);
       
-      // Se não é CWL, é guerra normal
-      if (!isCWL && !war.season) {
-        normalWars.push(war);
+      // Se é CWL, pula (desconta automaticamente)
+      if (isCWL) {
+        return;
+      }
+
+      // Verifica se tem endTime (obrigatório para processar)
+      if (!war.endTime) {
+        return;
+      }
+
+      try {
+        // Converte o formato ISO compacto (20260129T012038.000Z) para formato padrão
+        // Formato: YYYYMMDDTHHmmss.sssZ -> YYYY-MM-DDTHH:mm:ss.sssZ
+        let dateString = war.endTime;
+        if (typeof dateString === 'string' && dateString.length >= 15) {
+          // Se não tem hífens, adiciona (formato compacto)
+          if (!dateString.includes('-') && dateString.match(/^\d{8}T/)) {
+            // YYYYMMDDTHHmmss... -> YYYY-MM-DDTHH:mm:ss...
+            dateString = `${dateString.substring(0, 4)}-${dateString.substring(4, 6)}-${dateString.substring(6, 8)}T${dateString.substring(9, 11)}:${dateString.substring(11, 13)}:${dateString.substring(13)}`;
+          }
+        }
+        
+        const warDate = new Date(dateString);
+        // Verifica se a data é válida
+        if (isNaN(warDate.getTime())) {
+          return;
+        }
+        
+        const warMonth = `${warDate.getFullYear()}-${String(warDate.getMonth() + 1).padStart(2, "0")}`;
+        
+        // Verifica se a guerra está em um dos meses selecionados
+        if (targetMonths.includes(warMonth)) {
+          // Para o mês atual, verifica se a guerra é até hoje
+          if (warMonth === currentMonth) {
+            const warDateOnly = new Date(warDate.getFullYear(), warDate.getMonth(), warDate.getDate());
+            if (warDateOnly > today) {
+              // Guerra no futuro (não deveria acontecer, mas filtra por segurança)
+              return;
+            }
+          }
+          
+          // Para meses passados, limita a 18 guerras normais por mês
+          if (warMonth !== currentMonth) {
+            const currentCount = normalWarsByMonth.get(warMonth) || 0;
+            if (currentCount >= 18) {
+              // Já temos 18 guerras normais deste mês, não adiciona mais
+              return;
+            }
+            normalWarsByMonth.set(warMonth, currentCount + 1);
+          }
+          
+          normalWars.push(war);
+        }
+      } catch (error) {
+        // Ignora guerras com data inválida
+        return;
       }
     });
 
@@ -297,22 +383,39 @@ export class DashboardService {
       new Date(b.endTime).getTime() - new Date(a.endTime).getTime()
     );
 
-    // Aplica paginação - pega apenas as 'limit' guerras normais a partir do 'offset'
-    const paginatedWars = sortedNormalWars.slice(offset, offset + limit);
+    // Não aplica paginação - retorna todas as guerras do(s) mês(es) selecionado(s)
+    const paginatedWars = sortedNormalWars;
 
+    // Normaliza o clanTag para comparação (garante que tenha #)
+    const normalizedClanTag = clanTag.startsWith("#") ? clanTag : `#${clanTag}`;
+    
     // Processa guerras normais
     const playerMap = new Map<string, any>();
+    
     paginatedWars.forEach((war: any) => {
-      const isNormalOrder = war.clan.tag === clanTag;
+      // Normaliza as tags da guerra para comparação
+      const warClanTag = war.clan?.tag ? (war.clan.tag.startsWith("#") ? war.clan.tag : `#${war.clan.tag}`) : "";
+      const warOpponentTag = war.opponent?.tag ? (war.opponent.tag.startsWith("#") ? war.opponent.tag : `#${war.opponent.tag}`) : "";
+      
+      const isNormalOrder = warClanTag === normalizedClanTag;
       const ourClan = isNormalOrder ? war.clan : war.opponent;
       const enemyClan = isNormalOrder ? war.opponent : war.clan;
+      
+      // Verifica se ourClan e enemyClan existem e têm members
+      if (!ourClan || !ourClan.members || !Array.isArray(ourClan.members)) {
+        return;
+      }
 
       ourClan.members.forEach((member: any) => {
+        if (!member || !member.tag) {
+          return;
+        }
+        
         if (!playerMap.has(member.tag)) {
           playerMap.set(member.tag, {
             tag: member.tag,
-            name: member.name,
-            townhallLevel: member.townhallLevel,
+            name: member.name || "",
+            townhallLevel: member.townhallLevel || 0,
             allAttacks: [],
             allDefenses: [],
           });
@@ -320,22 +423,24 @@ export class DashboardService {
 
         const p = playerMap.get(member.tag);
 
-        if (member.attacks) {
+        if (member.attacks && Array.isArray(member.attacks)) {
           member.attacks.forEach((att: any) => {
-            p.allAttacks.push({
-              date: war.endTime,
-              stars: att.stars,
-              destruction: att.destructionPercentage,
-              opponent: enemyClan.name,
-            });
+            if (att) {
+              p.allAttacks.push({
+                date: war.endTime,
+                stars: att.stars || 0,
+                destruction: att.destructionPercentage || 0,
+                opponent: enemyClan?.name || "Unknown",
+              });
+            }
           });
         }
 
         if (member.bestOpponentAttack) {
           p.allDefenses.push({
             date: war.endTime,
-            stars: member.bestOpponentAttack.stars,
-            destruction: member.bestOpponentAttack.destructionPercentage,
+            stars: member.bestOpponentAttack.stars || 0,
+            destruction: member.bestOpponentAttack.destructionPercentage || 0,
           });
         }
       });
@@ -343,8 +448,7 @@ export class DashboardService {
 
     return {
       players: Array.from(playerMap.values()),
-      totalNormalWars: sortedNormalWars.length, // Total de guerras normais disponíveis
-      hasMore: (offset + limit) < sortedNormalWars.length,
+      totalNormalWars: sortedNormalWars.length, // Total de guerras normais disponíveis nos meses selecionados
     };
   }
 }
