@@ -1,7 +1,11 @@
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { useSuspenseQuery, useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect } from "react";
-import { getClanInfoQueryOptions } from "@/api";
+import { useEffect, useState, useMemo } from "react";
+import { 
+  getClanInfoQueryOptions,
+  getNormalWarsQueryOptions,
+  getClanRankingQueryOptions,
+} from "@/api";
 import { 
   Users, 
   Trophy, 
@@ -11,6 +15,22 @@ import {
   Globe,
   Building2
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { CWLSelector } from "../-cwl-selector";
+
+// Função para obter o mês atual (formato YYYY-MM)
+function getCurrentMonth(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  return `${year}-${month}`;
+}
 
 export const Route = createFileRoute("/(private)/clan/$clanTag/")({
   component: RouteComponent,
@@ -19,18 +39,56 @@ export const Route = createFileRoute("/(private)/clan/$clanTag/")({
 function RouteComponent() {
   const { clanTag } = Route.useParams();
   const { data: clanStats } = useSuspenseQuery(getClanInfoQueryOptions(clanTag));
+  const [isCWLSelectorOpen, setIsCWLSelectorOpen] = useState(false);
+  const currentMonth = getCurrentMonth();
+
+  // Busca dados de guerras normais para o CWL Selector
+  const { data: normalWarsData } = useQuery({
+    ...getNormalWarsQueryOptions(clanTag, [currentMonth]),
+    enabled: isCWLSelectorOpen, // Só busca quando o dialog está aberto
+  });
+
+  // Ranking do clã para obter membros atuais
+  const { data: clanRanking } = useQuery({
+    ...getClanRankingQueryOptions(clanTag),
+    enabled: isCWLSelectorOpen, // Só busca quando o dialog está aberto
+  });
+
+  // Lista de tags dos membros atuais do clã
+  const currentClanMemberTags = useMemo(() => {
+    return clanRanking?.players?.map((p: any) => p.playerTag) || [];
+  }, [clanRanking]);
+
+  // Processa os dados dos jogadores para o CWL Selector
+  const cwlPlayers = useMemo(() => {
+    if (!normalWarsData?.players) return [];
+    return normalWarsData.players;
+  }, [normalWarsData]);
 
   useEffect(() => {
     document.title = `${clanStats.name} - Clashdata`;
   }, [clanStats.name]);
 
   return (
-    <div className="bg-card border border-border rounded-xl p-4 sm:p-5 lg:p-6">
-          <div className="space-y-6">
+    <>
+      <div className="bg-card border border-border rounded-xl p-4 sm:p-5 lg:p-6">
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
             <h2 className="text-lg sm:text-xl font-semibold text-foreground flex items-center gap-2">
               <Shield className="w-5 h-5" />
               Visão Geral
             </h2>
+            <Button
+              onClick={() => setIsCWLSelectorOpen(true)}
+              variant="default"
+              size="sm"
+              className="rounded-xl"
+            >
+              <Shield className="w-4 h-4 mr-2" />
+              <span className="hidden sm:inline">Seleção CWL</span>
+              <span className="sm:hidden">CWL</span>
+            </Button>
+          </div>
 
             {/* Informações Básicas do Clã */}
             <div className="space-y-4">
@@ -216,7 +274,21 @@ function RouteComponent() {
                 )}
               </div>
             </div>
+        </div>
       </div>
-    </div>
+
+      <Dialog open={isCWLSelectorOpen} onOpenChange={setIsCWLSelectorOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Seleção CWL - Liga de Clãs</DialogTitle>
+          </DialogHeader>
+          <CWLSelector
+            players={cwlPlayers as any}
+            currentClanMembers={currentClanMemberTags}
+            clanName={clanStats.name}
+          />
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
